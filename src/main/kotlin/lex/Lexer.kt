@@ -8,12 +8,6 @@ class Lexer (private val content: StringBuffer ){
   private var currentPosition = Position()
   private var startPosition = Position()
 
-  private var keywords = setOf(
-    "if", "else", "while", "for", "return", "break", "continue", "int", "float", "double", "char", "void",
-    "struct", "typedef", "enum", "union", "const", "static", "extern", "register", "auto", "volatile", "inline",
-    "restrict", "sizeof", "alignof", "offsetof", "asm", "typeof", "typeof__", "va_arg", "va_list", "va_start",
-    "va_end", "va_copy", "va_arg_pack", "va_arg_pack_len", "va_arg_pack_ptr", "va_arg_pack_end", "va_arg_pack_next",
-  )
 
   private fun peek() = content[cur]
   private fun advance(offset: Int = 1): Char {
@@ -175,7 +169,7 @@ class Lexer (private val content: StringBuffer ){
 
     val value = str.toString().lowercase();
 
-    return if (keywords.contains(value)) {
+    return if (Token.keywords.contains(value)) {
       createToken(TokenType.KEYWORD, value)
     } else {
       createToken(TokenType.IDENTIFIER, value)
@@ -196,7 +190,7 @@ class Lexer (private val content: StringBuffer ){
 
     advance() // Skip "
 
-    return createToken(TokenType.IDENTIFIER, str.toString())
+    return createToken(TokenType.STRING, str.toString())
   }
 
   private fun makeOp(value: String): Token {

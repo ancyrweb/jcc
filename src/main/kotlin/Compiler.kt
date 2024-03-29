@@ -1,5 +1,6 @@
 package fr.ancyr.jcc
 
+import fr.ancyr.jcc.ast.Parser
 import fr.ancyr.jcc.lex.Lexer
 import java.io.InputStream
 
@@ -9,9 +10,8 @@ class Compiler {
     val lexer = Lexer(buffer)
     val tokens = lexer.parse()
 
-    for (token in tokens) {
-      println(token)
-    }
+   val parser = Parser(tokens)
+    val ast = parser.parse()
   }
 
   private fun getContent(stream: InputStream): StringBuffer {

@@ -6,6 +6,7 @@ enum class TokenType {
   OPERATOR,
   SYMBOL,
   IDENTIFIER,
+  STRING,
   COMMENT;
 
   public val line: Int = 0
