@@ -24,7 +24,7 @@ data class Token(
     return types.contains(value)
   }
 
-  fun isSymbol(value: String): Boolean {
+  fun isSymbol(value: Char): Boolean {
     return type == TokenType.SYMBOL && this.value == value
   }
 
@@ -38,5 +38,9 @@ data class Token(
 
   fun isOperator(value: String): Boolean {
     return type == TokenType.OPERATOR && this.value == value
+  }
+
+  fun isOperator(vararg values: String): Boolean {
+    return type == TokenType.OPERATOR && values.contains(this.value)
   }
 }

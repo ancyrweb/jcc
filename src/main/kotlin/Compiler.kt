@@ -10,8 +10,12 @@ class Compiler {
     val lexer = Lexer(buffer)
     val tokens = lexer.parse()
 
-   val parser = Parser(tokens)
+    val parser = Parser(tokens)
     val ast = parser.parse()
+
+    for (node in ast) {
+      println(node)
+    }
   }
 
   private fun getContent(stream: InputStream): StringBuffer {

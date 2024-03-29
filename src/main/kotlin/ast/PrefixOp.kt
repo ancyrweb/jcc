@@ -5,4 +5,8 @@ import fr.ancyr.jcc.lex.Token
 data class PrefixOp(
   val identifier: IdentifierExpr,
   val op: Token
-) : Expr()
+) : Expr() {
+  override fun toString(): String {
+    return "PrefixOp(${op.value} $identifier)"
+  }
+}
