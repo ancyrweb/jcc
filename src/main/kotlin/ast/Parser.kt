@@ -63,9 +63,13 @@ class Parser (private val tokens: List<Token>) {
   }
 
   private fun expr(): Expr = exprCommas()
+
   private fun exprCommas(): Expr = exprAssignments() // TODO
+
   private fun exprAssignments(): Expr = exprTernary() // TODO
+
   private fun exprTernary(): Expr = exprLogicalOr() // TODO
+
   private fun exprLogicalOr(): Expr {
     var left = exprLogicalAnd()
     while (peek().isOperator("||")) {
@@ -76,6 +80,7 @@ class Parser (private val tokens: List<Token>) {
 
     return left
   }
+
   private fun exprLogicalAnd(): Expr {
     var left = exprBitwiseInclusiveOr()
     while (peek().isOperator("&&")) {
@@ -152,6 +157,7 @@ class Parser (private val tokens: List<Token>) {
 
     return left
   }
+
   private fun exprTerms(): Expr {
     var left = exprFactors()
     while (peek().isOperator("-", "+")) {
@@ -162,6 +168,7 @@ class Parser (private val tokens: List<Token>) {
 
     return left
   }
+
   private fun exprFactors(): Expr {
     var left = exprUnaryOrPrefix()
     while (peek().isOperator("*", "/", "%")) {
@@ -178,8 +185,8 @@ class Parser (private val tokens: List<Token>) {
       val operator = advance()
 
       if (peek().isIdentifier()) {
-        val expr = matchIdentifier()
-        return PrefixOp(expr, operator)
+        val identifier = matchIdentifier()
+        return PrefixOp(identifier, operator)
       }
 
         throw RuntimeException("Expected identifier after prefix operator")
@@ -199,18 +206,13 @@ class Parser (private val tokens: List<Token>) {
       val expr = expr()
       consumeSymbol(')')
       return GroupExpr(expr)
-    } else if (peek().isSymbol('[')) {
-      consumeSymbol('[')
-      val value = exprTerminal()
-      consumeSymbol(']')
-      return ArrayAccessExpr(value)
     }
 
     val expr = exprTerminal()
 
     // Postfix increments
     if (peek().isOperator("--", "++")) {
-      if (expr is IdentifierExpr) {
+      if (expr is IdentifierExpr || expr is ArrayAccessExpr) {
         val operator = advance()
         return PostfixOp(expr, operator)
       }
@@ -225,21 +227,24 @@ class Parser (private val tokens: List<Token>) {
     if (peek().isConstant()) {
       val token = advance()
       return ConstantExpr(token)
-    } else if (peek().isIdentifier()) {
-      val token = advance()
-      return IdentifierExpr(token)
     }
 
-    throw RuntimeException("Unexpected token: ${peek()} at ${peek().position}")
+    return matchIdentifier()
   }
 
-  private fun matchIdentifier(): IdentifierExpr {
-    val token = peek()
-    if (!token.isIdentifier()) {
-      throw Exception("Expected identifier at ${token.position}")
+  private fun matchIdentifier(): Expr {
+    if (!peek().isIdentifier()) {
+      throw Exception("Expected identifier at ${peek().position}")
     }
 
-    index++
+    val token = advance()
+    if (peek().isSymbol('[')) {
+      consumeSymbol('[')
+      val index = expr()
+      consumeSymbol(']')
+      return ArrayAccessExpr(token, index)
+    }
+
     return IdentifierExpr(token)
   }
 
