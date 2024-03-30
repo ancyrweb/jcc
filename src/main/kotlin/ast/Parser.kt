@@ -1,6 +1,9 @@
 package fr.ancyr.jcc.ast
 
 import fr.ancyr.jcc.ast.nodes.*
+import fr.ancyr.jcc.ast.sem.Scope
+import fr.ancyr.jcc.ast.sem.Symbol
+import fr.ancyr.jcc.ast.sem.SymbolType
 import fr.ancyr.jcc.lex.Token
 import fr.ancyr.jcc.lex.TokenType
 
@@ -25,6 +28,7 @@ class Parser (private val tokens: List<Token>) {
   private var index = 0
 
   private var nodes = mutableListOf<Node>()
+  private var currentScope = Scope()
 
   private fun peek() = tokens[index]
   private fun eof() = index >= tokens.size
@@ -71,16 +75,17 @@ class Parser (private val tokens: List<Token>) {
   private fun parseDeclaration(): Node {
     val type = advance()
     val identifier = matchIdentifier()
+    var expr: Expr? = null
 
     if (peek().isOperator("=")) {
       advance()
-      val expr = expr()
-      consumeSymbol(';')
-      return DeclarationNode(type, identifier, expr)
+      expr = expr()
     }
 
     consumeSymbol(';')
-    return DeclarationNode(type, identifier, null)
+
+    addSymbolToScope(identifier, type)
+    return DeclarationNode(type, identifier, expr)
   }
 
 
@@ -153,12 +158,20 @@ class Parser (private val tokens: List<Token>) {
   }
 
   private fun blockNode(): BlockNode {
+    // Create lexical scope
+    val scope = Scope(currentScope)
+    currentScope = scope
+
     consumeSymbol('{')
     val body = mutableListOf<Node>()
     while (!peek().isSymbol('}')) {
       body.add(parseNextNode())
     }
     consumeSymbol('}')
+
+    // Restore scope
+    currentScope = scope.parent!!
+
     return BlockNode(body)
   }
 
@@ -381,4 +394,9 @@ class Parser (private val tokens: List<Token>) {
     return expr is IdentifierExpr || expr is ArrayAccessExpr
   }
 
+  private fun addSymbolToScope(identifier: Token, type: Token) {
+    currentScope.addSymbol(
+      Symbol(identifier.value as String, SymbolType.fromString(type.value as String))
+    )
+  }
 }

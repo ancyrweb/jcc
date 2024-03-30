@@ -1,4 +1,3 @@
-int a;
-i++;
-array[i] += 1;
-a = 2;
+int main(int argc, char argv) {
+    return 0;
+}
