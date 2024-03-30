@@ -1,4 +1,4 @@
-package fr.ancyr.jcc.ast
+package fr.ancyr.jcc.ast.nodes
 
 import fr.ancyr.jcc.lex.Token
 

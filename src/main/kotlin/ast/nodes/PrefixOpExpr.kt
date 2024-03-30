@@ -1,12 +1,12 @@
-package fr.ancyr.jcc.ast
+package fr.ancyr.jcc.ast.nodes
 
 import fr.ancyr.jcc.lex.Token
 
-data class PostfixOp(
+data class PrefixOpExpr(
   val expr: Expr,
   val op: Token
 ) : Expr() {
   override fun toString(): String {
-    return "PostfixOp(${op.value} $expr)"
+    return "PrefixOp(${op.value} $expr)"
   }
 }

@@ -40,7 +40,15 @@ data class Token(
     return type == TokenType.OPERATOR && this.value == value
   }
 
-  fun isOperator(vararg values: String): Boolean {
+  fun isAnyOperator(vararg values: String): Boolean {
     return type == TokenType.OPERATOR && values.contains(this.value)
+  }
+
+  fun isKeyword(value: String): Boolean {
+    return type == TokenType.KEYWORD && this.value == value
+  }
+
+  fun isAnyKeyword(vararg values: String): Boolean {
+    return type == TokenType.KEYWORD && values.contains(this.value)
   }
 }

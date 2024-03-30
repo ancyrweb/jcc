@@ -1,8 +1,8 @@
-package fr.ancyr.jcc.ast
+package fr.ancyr.jcc.ast.nodes
 
 import fr.ancyr.jcc.lex.Token
 
-data class UnaryOp(
+data class UnaryOpExpr(
   val node: Expr,
   val op: Token
 ) : Expr() {
