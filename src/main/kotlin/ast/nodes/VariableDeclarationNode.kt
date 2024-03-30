@@ -2,7 +2,7 @@ package fr.ancyr.jcc.ast.nodes
 
 import fr.ancyr.jcc.lex.Token
 
-data class DeclarationNode(
+data class VariableDeclarationNode(
    val type: Token,
    val identifier: Token,
    val value: Node?

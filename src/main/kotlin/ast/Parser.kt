@@ -77,6 +77,20 @@ class Parser (private val tokens: List<Token>) {
     val identifier = matchIdentifier()
     var expr: Expr? = null
 
+    if (peek().isSymbol('(')) {
+      // Function declaration
+      addSymbolToScope(identifier, type)
+
+      consumeSymbol('(')
+      val params = parseFormalParameters()
+      var block: BlockNode? = null
+      if (peek().isSymbol('{')) {
+        block = blockNode()
+      }
+
+      return FunctionNode(type, identifier, params, block)
+    }
+
     if (peek().isOperator("=")) {
       advance()
       expr = expr()
@@ -85,10 +99,26 @@ class Parser (private val tokens: List<Token>) {
     consumeSymbol(';')
 
     addSymbolToScope(identifier, type)
-    return DeclarationNode(type, identifier, expr)
+    return VariableDeclarationNode(type, identifier, expr)
   }
 
+  private fun parseFormalParameters(): List<FormalParameterNode> {
+    val params = mutableListOf<FormalParameterNode>()
 
+    while (!peek().isSymbol(')')) {
+      val type = matchType()
+      val identifier = matchIdentifier()
+
+      params.add(FormalParameterNode(type, identifier))
+
+      if (peek().isSymbol(',')) {
+        advance()
+      }
+    }
+
+    consumeSymbol(')')
+    return params
+  }
 
   private fun parseIfStatement(): Node {
     advance()
@@ -384,6 +414,15 @@ class Parser (private val tokens: List<Token>) {
   private fun matchIdentifier(): Token {
     if (!peek().isIdentifier()) {
       throw Exception("Expected identifier at ${peek().position}")
+    }
+
+    val token = advance()
+    return token
+  }
+
+  private fun matchType(): Token {
+    if (!peek().isType()) {
+      throw Exception("Expected type at ${peek().position}")
     }
 
     val token = advance()
