@@ -1,8 +1,8 @@
 package fr.ancyr.jcc.ir.nodes.literal
 
-data class IRIntLiteral (val value: Long, val bits: IRBits) : IRLiteral() {
+data class IRIntLiteral(val value: Long, val bits: IRBits) : IRLiteral() {
   override fun toString(): String {
-    return value.toString()
+    return "IRIntLiteral($value, $bits)"
   }
 
   companion object {

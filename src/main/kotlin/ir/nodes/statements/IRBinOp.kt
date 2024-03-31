@@ -1,4 +1,4 @@
-package fr.ancyr.jcc.ir.nodes
+package fr.ancyr.jcc.ir.nodes.statements
 
 import fr.ancyr.jcc.ir.nodes.expr.IRExpr
 import fr.ancyr.jcc.ir.nodes.expr.IRTempExpr
