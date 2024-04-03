@@ -31,7 +31,7 @@ class CodegenX86(private val statements: List<IRStatement>) {
           val op = when (node.operand) {
             IRBinOpOperand.PLUS -> "add"
             IRBinOpOperand.MINUS -> "sub"
-            IRBinOpOperand.TIMES -> "mul"
+            IRBinOpOperand.MUL -> "mul"
             IRBinOpOperand.DIV -> "div"
             IRBinOpOperand.AND -> "and"
             IRBinOpOperand.OR -> "or"

@@ -3,93 +3,42 @@ package fr.ancyr.jcc.lex
 import fr.ancyr.jcc.commons.Position
 
 data class Token(
-  public val type: TokenType,
-  public val position: Position,
-  public val value: Any
+  val type: TokenType,
+  val position: Position,
+  val value: Any?
 ) {
   companion object {
-    var types = setOf(
-      "int", "float", "double", "char", "void"
-    )
-
-    var keywords = setOf(
-      "if",
-      "else",
-      "while",
-      "for",
-      "return",
-      "break",
-      "continue",
-      "int",
-      "float",
-      "double",
-      "char",
-      "void",
-      "struct",
-      "typedef",
-      "enum",
-      "union",
-      "const",
-      "static",
-      "extern",
-      "register",
-      "auto",
-      "volatile",
-      "inline",
-      "restrict",
-      "sizeof",
-      "alignof",
-      "offsetof",
-      "asm",
-      "typeof",
-      "typeof__",
-      "va_arg",
-      "va_list",
-      "va_start",
-      "va_end",
-      "va_copy",
-      "va_arg_pack",
-      "va_arg_pack_len",
-      "va_arg_pack_ptr",
-      "va_arg_pack_end",
-      "va_arg_pack_next",
+    var varTypes = setOf(
+      TokenType.TYPE_INT,
+      TokenType.TYPE_CHAR,
+      TokenType.TYPE_VOID,
+      TokenType.TYPE_FLOAT,
+      TokenType.TYPE_DOUBLE,
+      TokenType.TYPE_LONG,
+      TokenType.TYPE_SHORT,
+      TokenType.TYPE_LONG_LONG,
+      TokenType.TYPE_LONG_DOUBLE
     )
   }
 
-  fun isType(): Boolean {
-    return types.contains(value)
+  fun isVarType(): Boolean {
+    return varTypes.contains(type)
   }
 
-  fun isSymbol(value: Char): Boolean {
-    return type == TokenType.SYMBOL && this.value == value
+  fun isTokenType(type: TokenType): Boolean {
+    return this.type == type
+  }
+
+  fun isAnyType(vararg types: TokenType): Boolean {
+    return types.contains(this.type)
   }
 
   fun isConstant(): Boolean {
-    return type == TokenType.NUMBER || type == TokenType.STRING
-  }
-
-  fun isNumber(): Boolean {
-    return type == TokenType.NUMBER
+    return type == TokenType.LIT_INT || type == TokenType.LIT_STRING
   }
 
   fun isIdentifier(): Boolean {
     return type == TokenType.IDENTIFIER
-  }
-
-  fun isOperator(value: String): Boolean {
-    return type == TokenType.OPERATOR && this.value == value
-  }
-
-  fun isAnyOperator(vararg values: String): Boolean {
-    return type == TokenType.OPERATOR && values.contains(this.value)
-  }
-
-  fun isKeyword(value: String): Boolean {
-    return type == TokenType.KEYWORD && this.value == value
-  }
-
-  fun isAnyKeyword(vararg values: String): Boolean {
-    return type == TokenType.KEYWORD && values.contains(this.value)
   }
 
   fun asString(): String {

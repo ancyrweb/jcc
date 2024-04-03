@@ -1,26 +1,27 @@
 package fr.ancyr.jcc.ast.sem
 
-enum class SymbolType {
-    INT,
-    FLOAT,
-    STRING,
-    CHAR,
-    SHORT,
-    LONG,
-    DOUBLE;
+import fr.ancyr.jcc.lex.TokenType
 
-    companion object {
-        fun fromString(type: String): SymbolType {
-            return when (type) {
-                "int" -> INT
-                "float" -> FLOAT
-                "string" -> STRING
-                "char" -> CHAR
-                "short" -> SHORT
-                "long" -> LONG
-                "double" -> DOUBLE
-                else -> throw IllegalArgumentException("Unknown type: $type")
-            }
-        }
+enum class SymbolType {
+  INT,
+  FLOAT,
+  STRING,
+  CHAR,
+  SHORT,
+  LONG,
+  DOUBLE;
+
+  companion object {
+    fun fromString(type: TokenType): SymbolType {
+      return when (type) {
+        TokenType.TYPE_INT -> INT
+        TokenType.TYPE_FLOAT -> FLOAT
+        TokenType.TYPE_DOUBLE -> DOUBLE
+        TokenType.TYPE_CHAR -> CHAR
+        TokenType.TYPE_SHORT -> SHORT
+        TokenType.TYPE_LONG -> LONG
+        else -> throw IllegalArgumentException("Unknown type: $type")
+      }
     }
+  }
 }

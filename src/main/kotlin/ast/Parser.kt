@@ -7,23 +7,6 @@ import fr.ancyr.jcc.ast.sem.SymbolType
 import fr.ancyr.jcc.lex.Token
 import fr.ancyr.jcc.lex.TokenType
 
-/**
- * () ] . -> and ++/-- (postfix) (15)
- * ++/-- (prefix) + - ! ~ (type) * & sizeof  (note: right to left) (14)
- * * / % (13)
- * + - (12)
- * << >> (11)
- * < <= > >= (10)
- * == != (9)
- * & (8)
- * ^ (7)
- * | (6)
- * && (5)
- * || (4)
- * ?: (note: right to left) (3)
- * = += -= *= /= %= &= ^= |= <<= >>= (note: right to left) (2)
- * , (1)
- */
 class Parser(private val tokens: List<Token>) {
   private var index = 0
 
@@ -33,12 +16,13 @@ class Parser(private val tokens: List<Token>) {
   private fun peek() = tokens[index]
   private fun eof() = index >= tokens.size
 
-  private fun consumeSymbol(symbol: Char) {
-    if (peek().type != TokenType.SYMBOL || peek().value != symbol) {
-      throw Exception("Expected symbol $symbol at ${peek().position}, got ${peek()}")
+  private fun consume(type: TokenType): Token {
+    if (peek().type != type) {
+      throw Exception("Expected token of type $type at ${peek().position}, got ${peek()}")
     }
 
-    index++
+    return advance()
+
   }
 
   private fun advance(): Token {
@@ -57,15 +41,21 @@ class Parser(private val tokens: List<Token>) {
   }
 
   private fun parseNextNode(): Node {
-    return if (peek().isType()) {
+
+    return if (peek().isVarType()) {
       parseDeclaration()
-    } else if (peek().isKeyword("if")) {
+    } else if (peek().isTokenType(TokenType.KEYWORD_IF)) {
       parseIfStatement()
-    } else if (peek().isKeyword("while")) {
+    } else if (peek().isTokenType(TokenType.KEYWORD_WHILE)) {
       parseWhileStatement()
-    } else if (peek().isKeyword("for")) {
+    } else if (peek().isTokenType(TokenType.KEYWORD_FOR)) {
       parseForLoopStatement()
-    } else if (peek().isAnyKeyword("break", "continue", "return", "goto")) {
+    } else if (peek().isAnyType(
+        TokenType.KEYWORD_BREAK,
+        TokenType.KEYWORD_CONTINUE,
+        TokenType.KEYWORD_RETURN
+      )
+    ) {
       parseKeywordDeclaration()
     } else {
       parseExprStatement()
@@ -77,26 +67,26 @@ class Parser(private val tokens: List<Token>) {
     val identifier = matchIdentifier()
     var expr: Expr? = null
 
-    if (peek().isSymbol('(')) {
+    if (peek().isTokenType(TokenType.SYMBOL_LEFT_PAREN)) {
       // Function declaration
       addSymbolToScope(identifier, type)
 
-      consumeSymbol('(')
+      consume(TokenType.SYMBOL_LEFT_PAREN)
       val params = parseFormalParameters()
       var block: BlockNode? = null
-      if (peek().isSymbol('{')) {
+      if (peek().isTokenType(TokenType.SYMBOL_LEFT_BRACE)) {
         block = blockNode()
       }
 
       return FunctionNode(type, identifier, params, block)
     }
 
-    if (peek().isOperator("=")) {
+    if (peek().isTokenType(TokenType.OP_EQUAL)) {
       advance()
       expr = expr()
     }
 
-    consumeSymbol(';')
+    consume(TokenType.SYMBOL_SEMICOLON)
 
     addSymbolToScope(identifier, type)
     return VariableDeclarationNode(type, identifier, expr)
@@ -105,18 +95,18 @@ class Parser(private val tokens: List<Token>) {
   private fun parseFormalParameters(): List<FormalParameterNode> {
     val params = mutableListOf<FormalParameterNode>()
 
-    while (!peek().isSymbol(')')) {
+    while (!peek().isTokenType(TokenType.SYMBOL_RIGHT_PAREN)) {
       val type = matchType()
       val identifier = matchIdentifier()
 
       params.add(FormalParameterNode(type, identifier))
 
-      if (peek().isSymbol(',')) {
+      if (peek().isTokenType(TokenType.SYMBOL_COMMA)) {
         advance()
       }
     }
 
-    consumeSymbol(')')
+    consume(TokenType.SYMBOL_RIGHT_PAREN)
     return params
   }
 
@@ -126,9 +116,9 @@ class Parser(private val tokens: List<Token>) {
     val ifStmt = IfNode(condExpr(), blockNode(), null, null)
     var currentBlock = ifStmt
 
-    while (!eof() && peek().isKeyword("else")) {
+    while (!eof() && peek().isTokenType(TokenType.KEYWORD_ELSE)) {
       advance();
-      if (peek().isKeyword("if")) {
+      if (peek().isTokenType(TokenType.KEYWORD_IF)) {
         advance()
         currentBlock.elseIf = IfNode(condExpr(), blockNode(), null, null)
         currentBlock = currentBlock.elseIf!!
@@ -151,16 +141,16 @@ class Parser(private val tokens: List<Token>) {
 
   private fun parseForLoopStatement(): Node {
     advance()
-    consumeSymbol('(')
+    consume(TokenType.SYMBOL_LEFT_PAREN)
 
     val init = parseNextNode()
-    consumeSymbol(';')
+    consume(TokenType.SYMBOL_SEMICOLON)
 
     val condition = expr()
-    consumeSymbol(';')
+    consume(TokenType.SYMBOL_SEMICOLON)
 
     val increment = parseNextNode()
-    consumeSymbol(')')
+    consume(TokenType.SYMBOL_RIGHT_PAREN)
 
     val block = blockNode()
 
@@ -170,20 +160,20 @@ class Parser(private val tokens: List<Token>) {
   private fun parseKeywordDeclaration(): Node {
     val keyword = advance()
 
-    if (peek().isSymbol(';')) {
+    if (peek().isTokenType(TokenType.SYMBOL_SEMICOLON)) {
       advance()
       return KeywordDeclarationNode(keyword)
     }
 
     val expr = expr()
-    consumeSymbol(';')
+    consume(TokenType.SYMBOL_SEMICOLON)
     return KeywordDeclarationNode(keyword, expr)
   }
 
   private fun condExpr(): Expr {
-    consumeSymbol('(')
+    consume(TokenType.SYMBOL_LEFT_PAREN)
     val expr = expr()
-    consumeSymbol(')')
+    consume(TokenType.SYMBOL_RIGHT_PAREN)
     return expr
   }
 
@@ -192,12 +182,14 @@ class Parser(private val tokens: List<Token>) {
     val scope = Scope(currentScope)
     currentScope = scope
 
-    consumeSymbol('{')
+    consume(TokenType.SYMBOL_LEFT_BRACE)
+
     val body = mutableListOf<Node>()
-    while (!peek().isSymbol('}')) {
+    while (!peek().isTokenType(TokenType.SYMBOL_RIGHT_BRACE)) {
       body.add(parseNextNode())
     }
-    consumeSymbol('}')
+
+    consume(TokenType.SYMBOL_RIGHT_BRACE)
 
     // Restore scope
     currentScope = scope.parent!!
@@ -208,7 +200,7 @@ class Parser(private val tokens: List<Token>) {
 
   private fun parseExprStatement(): Node {
     val expr = expr()
-    consumeSymbol(';')
+    consume(TokenType.SYMBOL_SEMICOLON)
     return ExprStatement(expr)
   }
 
@@ -218,18 +210,19 @@ class Parser(private val tokens: List<Token>) {
 
   private fun exprAssignments(): Expr {
     val left = exprTernary()
-    if (peek().isAnyOperator(
-        "=",
-        "+=",
-        "-=",
-        "*=",
-        "/=",
-        "%=",
-        "&=",
-        "^=",
-        "|=",
-        "<<=",
-        ">>="
+
+    if (peek().isAnyType(
+        TokenType.OP_EQUAL,
+        TokenType.OP_PLUS_EQUAL,
+        TokenType.OP_MINUS_EQUAL,
+        TokenType.OP_MUL_EQUAL,
+        TokenType.OP_DIV_EQUAL,
+        TokenType.OP_MOD_EQUAL,
+        TokenType.OP_AND_EQUAL,
+        TokenType.OP_XOR_EQUAL,
+        TokenType.OP_OR_EQUAL,
+        TokenType.OP_LEFT_SHIFT_EQUAL,
+        TokenType.OP_RIGHT_SHIFT_EQUAL
       )
     ) {
       if (!isLValue(left)) {
@@ -248,7 +241,7 @@ class Parser(private val tokens: List<Token>) {
 
   private fun exprLogicalOr(): Expr {
     var left = exprLogicalAnd()
-    while (peek().isOperator("||")) {
+    while (peek().isTokenType(TokenType.OP_OR)) {
       val operator = advance()
       val right = exprLogicalAnd()
       left = BinOpExpr(operator, left, right)
@@ -259,7 +252,7 @@ class Parser(private val tokens: List<Token>) {
 
   private fun exprLogicalAnd(): Expr {
     var left = exprBitwiseInclusiveOr()
-    while (peek().isOperator("&&")) {
+    while (peek().isTokenType(TokenType.OP_AND)) {
       val operator = advance()
       val right = exprBitwiseInclusiveOr()
       left = BinOpExpr(operator, left, right)
@@ -270,7 +263,7 @@ class Parser(private val tokens: List<Token>) {
 
   private fun exprBitwiseInclusiveOr(): Expr {
     var left = exprBitwiseExclusiveOr()
-    while (peek().isOperator("|")) {
+    while (peek().isTokenType(TokenType.OP_BITWISE_INCLUSIVE_OR)) {
       val operator = advance()
       val right = exprBitwiseExclusiveOr()
       left = BinOpExpr(operator, left, right)
@@ -281,7 +274,7 @@ class Parser(private val tokens: List<Token>) {
 
   private fun exprBitwiseExclusiveOr(): Expr {
     var left = exprBitwiseAnd()
-    while (peek().isOperator("^")) {
+    while (peek().isTokenType(TokenType.OP_BITWISE_EXCLUSIVE_OR)) {
       val operator = advance()
       val right = exprBitwiseAnd()
       left = BinOpExpr(operator, left, right)
@@ -292,7 +285,7 @@ class Parser(private val tokens: List<Token>) {
 
   private fun exprBitwiseAnd(): Expr {
     var left = exprRelationalEquality()
-    while (peek().isOperator("&")) {
+    while (peek().isTokenType(TokenType.OP_BITWISE_AND)) {
       val operator = advance()
       val right = exprRelationalEquality()
       left = BinOpExpr(operator, left, right)
@@ -303,7 +296,7 @@ class Parser(private val tokens: List<Token>) {
 
   private fun exprRelationalEquality(): Expr {
     var left = exprRelationalComparison()
-    while (peek().isAnyOperator("==", "!=")) {
+    while (peek().isAnyType(TokenType.OP_EQUAL_EQUAL, TokenType.OP_NOT_EQUAL)) {
       val operator = advance()
       val right = exprRelationalComparison()
       left = BinOpExpr(operator, left, right)
@@ -314,7 +307,13 @@ class Parser(private val tokens: List<Token>) {
 
   private fun exprRelationalComparison(): Expr {
     var left = exprBitwiseShifts()
-    while (peek().isAnyOperator("<", ">", "<=", ">=")) {
+    while (peek().isAnyType(
+        TokenType.OP_LESS,
+        TokenType.OP_LESS_EQUAL,
+        TokenType.OP_GREATER,
+        TokenType.OP_GREATER_EQUAL
+      )
+    ) {
       val operator = advance()
       val right = exprBitwiseShifts()
       left = BinOpExpr(operator, left, right)
@@ -325,7 +324,11 @@ class Parser(private val tokens: List<Token>) {
 
   private fun exprBitwiseShifts(): Expr {
     var left = exprTerms()
-    while (peek().isAnyOperator("<<", ">>")) {
+    while (peek().isAnyType(
+        TokenType.OP_LEFT_SHIFT,
+        TokenType.OP_RIGHT_SHIFT
+      )
+    ) {
       val operator = advance()
       val right = exprTerms()
       left = BinOpExpr(operator, left, right)
@@ -336,7 +339,7 @@ class Parser(private val tokens: List<Token>) {
 
   private fun exprTerms(): Expr {
     var left = exprFactors()
-    while (peek().isAnyOperator("-", "+")) {
+    while (peek().isAnyType(TokenType.OP_PLUS, TokenType.OP_MINUS)) {
       val operator = advance()
       val right = exprFactors()
       left = BinOpExpr(operator, left, right)
@@ -347,7 +350,12 @@ class Parser(private val tokens: List<Token>) {
 
   private fun exprFactors(): Expr {
     var left = exprUnaryOrPrefix()
-    while (peek().isAnyOperator("*", "/", "%")) {
+    while (peek().isAnyType(
+        TokenType.OP_MUL,
+        TokenType.OP_DIV,
+        TokenType.OP_MOD
+      )
+    ) {
       val operator = advance()
       val right = exprUnaryOrPrefix()
       left = BinOpExpr(operator, left, right)
@@ -357,7 +365,7 @@ class Parser(private val tokens: List<Token>) {
   }
 
   private fun exprUnaryOrPrefix(): Expr {
-    if (peek().isAnyOperator("--", "++")) {
+    if (peek().isAnyType(TokenType.OP_PLUS_PLUS, TokenType.OP_MINUS_MINUS)) {
       val operator = advance()
 
       if (peek().isIdentifier()) {
@@ -366,7 +374,7 @@ class Parser(private val tokens: List<Token>) {
       }
 
       throw RuntimeException("Expected identifier after prefix operator")
-    } else if (peek().isOperator("-") || peek().isOperator("+")) {
+    } else if (peek().isAnyType(TokenType.OP_PLUS, TokenType.OP_MINUS)) {
       val operator = advance()
       val expr = exprGroupArrayOrPostfix()
 
@@ -377,17 +385,17 @@ class Parser(private val tokens: List<Token>) {
   }
 
   private fun exprGroupArrayOrPostfix(): Expr {
-    if (peek().isSymbol('(')) {
-      consumeSymbol('(')
+    if (peek().isTokenType(TokenType.SYMBOL_LEFT_PAREN)) {
+      consume(TokenType.SYMBOL_LEFT_PAREN)
       val expr = expr()
-      consumeSymbol(')')
+      consume(TokenType.SYMBOL_RIGHT_PAREN)
       return GroupExpr(expr)
     }
 
     val expr = exprTerminal()
 
     // Postfix increments
-    if (peek().isAnyOperator("--", "++")) {
+    if (peek().isAnyType(TokenType.OP_PLUS_PLUS, TokenType.OP_MINUS_MINUS)) {
       if (expr is IdentifierExpr || expr is ArrayAccessExpr) {
         val operator = advance()
         return PostfixOpExpr(expr, operator)
@@ -414,10 +422,10 @@ class Parser(private val tokens: List<Token>) {
     }
 
     val token = advance()
-    if (peek().isSymbol('[')) {
-      consumeSymbol('[')
+    if (peek().isTokenType(TokenType.SYMBOL_LEFT_BRACKET)) {
+      consume(TokenType.SYMBOL_LEFT_BRACKET)
       val index = expr()
-      consumeSymbol(']')
+      consume(TokenType.SYMBOL_RIGHT_BRACKET)
       return ArrayAccessExpr(token, index)
     }
 
@@ -425,7 +433,7 @@ class Parser(private val tokens: List<Token>) {
   }
 
   private fun matchIdentifier(): Token {
-    if (!peek().isIdentifier()) {
+    if (!peek().isTokenType(TokenType.IDENTIFIER)) {
       throw Exception("Expected identifier at ${peek().position}")
     }
 
@@ -434,7 +442,7 @@ class Parser(private val tokens: List<Token>) {
   }
 
   private fun matchType(): Token {
-    if (!peek().isType()) {
+    if (!peek().isVarType()) {
       throw Exception("Expected type at ${peek().position}")
     }
 
@@ -446,11 +454,11 @@ class Parser(private val tokens: List<Token>) {
     return expr is IdentifierExpr || expr is ArrayAccessExpr
   }
 
-  private fun addSymbolToScope(identifier: Token, type: Token) {
+  private fun addSymbolToScope(identifier: Token, varType: Token) {
     currentScope.addSymbol(
       Symbol(
         identifier.value as String,
-        SymbolType.fromString(type.value as String)
+        SymbolType.fromString(varType.type)
       )
     )
   }

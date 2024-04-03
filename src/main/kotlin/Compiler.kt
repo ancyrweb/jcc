@@ -12,6 +12,7 @@ class Compiler {
     val lexer = Lexer(buffer)
     val tokens = lexer.parse()
 
+ 
     val parser = Parser(tokens)
     val ast = parser.parse()
 

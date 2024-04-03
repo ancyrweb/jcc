@@ -3,7 +3,7 @@ package fr.ancyr.jcc.ir.nodes.statements
 enum class IRBinOpOperand {
   PLUS,
   MINUS,
-  TIMES,
+  MUL,
   DIV,
   MOD,
   AND,

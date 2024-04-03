@@ -8,6 +8,7 @@ import fr.ancyr.jcc.ir.nodes.literal.IRBits
 import fr.ancyr.jcc.ir.nodes.literal.IRIntLiteral
 import fr.ancyr.jcc.ir.nodes.statements.*
 import fr.ancyr.jcc.lex.Token
+import fr.ancyr.jcc.lex.TokenType
 
 class AstToIrTranslator(private val ast: List<Node>) {
   val ir = mutableListOf<IRStatement>()
@@ -47,7 +48,7 @@ class AstToIrTranslator(private val ast: List<Node>) {
           )
         }
       } else if (node is KeywordDeclarationNode) {
-        if (node.keyword.isKeyword("return")) {
+        if (node.keyword.isTokenType(TokenType.KEYWORD_RETURN)) {
           if (node.expr != null) {
             ir.add(IRReturn(toExpr(node.expr), isMain))
           } else {
@@ -91,11 +92,11 @@ class AstToIrTranslator(private val ast: List<Node>) {
   }
 
   private fun astBinopToIrBinop(token: Token): IRBinOpOperand {
-    return when (token.asString()) {
-      "+" -> IRBinOpOperand.PLUS
-      "-" -> IRBinOpOperand.MINUS
-      "*" -> IRBinOpOperand.TIMES
-      "/" -> IRBinOpOperand.DIV
+    return when (token.type) {
+      TokenType.OP_PLUS -> IRBinOpOperand.PLUS
+      TokenType.OP_MINUS -> IRBinOpOperand.MINUS
+      TokenType.OP_MUL -> IRBinOpOperand.MUL
+      TokenType.OP_DIV -> IRBinOpOperand.DIV
       else -> throw RuntimeException("Unknown binop: ${token}")
     }
   }

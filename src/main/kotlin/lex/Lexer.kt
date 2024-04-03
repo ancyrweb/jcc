@@ -28,7 +28,7 @@ class Lexer(private val content: StringBuffer) {
     return content[cur + offset]
   }
 
-  private fun createToken(type: TokenType, value: Any): Token {
+  private fun createToken(type: TokenType, value: Any?): Token {
     return Token(type, startPosition.clone(), value)
   }
 
@@ -63,7 +63,7 @@ class Lexer(private val content: StringBuffer) {
         }
 
         '(', ')', '{', '}', '[', ']', ',', ';', ':' -> {
-          addToken(createToken(TokenType.SYMBOL, advance()))
+          addToken(parseSymbol())
         }
 
         '/' -> {
@@ -112,7 +112,7 @@ class Lexer(private val content: StringBuffer) {
       number = number * 10 + (advance() - '0')
     }
 
-    return createToken(TokenType.NUMBER, number)
+    return createToken(TokenType.LIT_INT, number)
   }
 
   private fun parseHexNumber(): Token {
@@ -123,7 +123,7 @@ class Lexer(private val content: StringBuffer) {
       str.append(advance())
     }
 
-    return createToken(TokenType.NUMBER, str.toString().toLong(16))
+    return createToken(TokenType.LIT_INT, str.toString().toLong(16))
   }
 
   private fun parseBinaryNumber(): Token {
@@ -134,7 +134,7 @@ class Lexer(private val content: StringBuffer) {
       str.append(advance())
     }
 
-    return createToken(TokenType.NUMBER, str.toString().toLong(2))
+    return createToken(TokenType.LIT_INT, str.toString().toLong(2))
   }
 
   private fun singleLineComment(): Token {
@@ -176,12 +176,36 @@ class Lexer(private val content: StringBuffer) {
       str.append(advance())
     }
 
-    val value = str.toString().lowercase();
-
-    return if (Token.keywords.contains(value)) {
-      createToken(TokenType.KEYWORD, value)
-    } else {
-      createToken(TokenType.IDENTIFIER, value)
+    return when (val value = str.toString().lowercase()) {
+      "int" -> createToken(TokenType.TYPE_INT, null)
+      "float" -> createToken(TokenType.TYPE_FLOAT, null)
+      "double" -> createToken(TokenType.TYPE_DOUBLE, null)
+      "char" -> createToken(TokenType.TYPE_CHAR, null)
+      "void" -> createToken(TokenType.TYPE_VOID, null)
+      "long" -> createToken(TokenType.TYPE_LONG, null)
+      "short" -> createToken(TokenType.TYPE_SHORT, null)
+      "if" -> createToken(TokenType.KEYWORD_IF, null)
+      "else" -> createToken(TokenType.KEYWORD_ELSE, null)
+      "while" -> createToken(TokenType.KEYWORD_WHILE, null)
+      "for" -> createToken(TokenType.KEYWORD_FOR, null)
+      "do" -> createToken(TokenType.KEYWORD_DO, null)
+      "switch" -> createToken(TokenType.KEYWORD_SWITCH, null)
+      "case" -> createToken(TokenType.KEYWORD_CASE, null)
+      "default" -> createToken(TokenType.KEYWORD_DEFAULT, null)
+      "break" -> createToken(TokenType.KEYWORD_BREAK, null)
+      "continue" -> createToken(TokenType.KEYWORD_CONTINUE, null)
+      "return" -> createToken(TokenType.KEYWORD_RETURN, null)
+      "goto" -> createToken(TokenType.KEYWORD_GOTO, null)
+      "typedef" -> createToken(TokenType.KEYWORD_TYPEDEF, null)
+      "extern" -> createToken(TokenType.KEYWORD_EXTERN, null)
+      "static" -> createToken(TokenType.KEYWORD_STATIC, null)
+      "auto" -> createToken(TokenType.KEYWORD_AUTO, null)
+      "register" -> createToken(TokenType.KEYWORD_REGISTER, null)
+      "const" -> createToken(TokenType.KEYWORD_CONST, null)
+      "volatile" -> createToken(TokenType.KEYWORD_VOLATILE, null)
+      "restrict" -> createToken(TokenType.KEYWORD_RESTRICT, null)
+      "sizeof" -> createToken(TokenType.KEYWORD_SIZEOF, null)
+      else -> createToken(TokenType.IDENTIFIER, value)
     }
   }
 
@@ -199,114 +223,118 @@ class Lexer(private val content: StringBuffer) {
 
     advance() // Skip "
 
-    return createToken(TokenType.STRING, str.toString())
+    return createToken(TokenType.LIT_STRING, str.toString())
   }
 
-  private fun makeOp(value: String): Token {
-    val token = createToken(TokenType.OPERATOR, value)
-    advance(value.length)
+  private fun parseSymbol(): Token {
+    val tokenType = when (peek()) {
+      '(' -> TokenType.SYMBOL_LEFT_PAREN
+      ')' -> TokenType.SYMBOL_RIGHT_PAREN
+      '{' -> TokenType.SYMBOL_LEFT_BRACE
+      '}' -> TokenType.SYMBOL_RIGHT_BRACE
+      '[' -> TokenType.SYMBOL_LEFT_BRACKET
+      ']' -> TokenType.SYMBOL_RIGHT_BRACKET
+      ',' -> TokenType.SYMBOL_COMMA
+      ';' -> TokenType.SYMBOL_SEMICOLON
+      ':' -> TokenType.SYMBOL_COLON
+      else -> throw LexException("Unrecognized symbol", currentPosition)
+    }
+
+    advance()
+    return createToken(tokenType, null)
+  }
+
+  private fun makeOp(type: TokenType, len: Int): Token {
+    val token = createToken(type, null)
+    advance(len)
     return token
   }
 
   private fun parseOperator(): Token {
     if (peek() == '+') {
       if (longPeek(1) == '+') {
-        return makeOp("++")
+        return makeOp(TokenType.OP_PLUS_PLUS, 2)
       } else if (longPeek(1) == '=') {
-        return makeOp("+=")
-      } else {
-        return makeOp("+")
+        return makeOp(TokenType.OP_PLUS_EQUAL, 2)
       }
+
+      return makeOp(TokenType.OP_PLUS, 1)
     } else if (peek() == '-') {
       if (longPeek(1) == '-') {
-        return makeOp("--")
+        return makeOp(TokenType.OP_MINUS_MINUS, 2)
       } else if (longPeek(1) == '=') {
-        return makeOp("-=")
-      } else {
-        return makeOp("-")
+        return makeOp(TokenType.OP_MINUS_EQUAL, 2)
       }
+
+      return makeOp(TokenType.OP_MINUS, 1)
     } else if (peek() == '*') {
       if (longPeek(1) == '=') {
-        return makeOp("*=")
-      } else {
-        return makeOp("*")
+        return makeOp(TokenType.OP_MUL_EQUAL, 2)
       }
+
+      return makeOp(TokenType.OP_MUL, 1)
     } else if (peek() == '/') {
       if (longPeek(1) == '=') {
-        return makeOp("/=")
-      } else {
-        return makeOp("/")
+        return makeOp(TokenType.OP_DIV_EQUAL, 2)
       }
+
+      return makeOp(TokenType.OP_DIV, 1)
     } else if (peek() == '%') {
       if (longPeek(1) == '=') {
-        return makeOp("%=")
-      } else {
-        return makeOp("%")
+        return makeOp(TokenType.OP_MOD_EQUAL, 2)
       }
-    } else if (peek() == '!') {
-      if (longPeek(1) == '=') {
-        return makeOp("!=")
-      } else {
-        return makeOp("!")
-      }
-    } else if (peek() == '<') {
-      if (longPeek(1) == '=') {
-        return makeOp("<=")
-      } else if (longPeek(1) == '<') {
-        if (longPeek(2) == '=') {
-          return makeOp("<<=")
-        } else {
-          return makeOp("<<")
-        }
-      } else {
-        return makeOp("<")
-      }
-    } else if (peek() == '>') {
-      if (longPeek(1) == '=') {
-        return makeOp(">=")
-      } else if (longPeek(1) == '>') {
-        if (longPeek(2) == '=') {
-          return makeOp(">>=")
-        } else {
-          return makeOp(">>")
-        }
-      } else {
-        return makeOp(">")
-      }
+
+      return makeOp(TokenType.OP_MOD, 1)
     } else if (peek() == '&') {
       if (longPeek(1) == '&') {
-        return makeOp("&&")
+        return makeOp(TokenType.OP_AND, 2)
       } else if (longPeek(1) == '=') {
-        return makeOp("&=")
-      } else {
-        return makeOp("&")
+        return makeOp(TokenType.OP_AND_EQUAL, 2)
       }
+
+      return makeOp(TokenType.OP_BITWISE_AND, 1)
     } else if (peek() == '|') {
       if (longPeek(1) == '|') {
-        return makeOp("||")
+        return makeOp(TokenType.OP_OR, 2)
       } else if (longPeek(1) == '=') {
-        return makeOp("|=")
-      } else {
-        return makeOp("|")
+        return makeOp(TokenType.OP_OR_EQUAL, 2)
       }
+
+      return makeOp(TokenType.OP_BITWISE_INCLUSIVE_OR, 1)
     } else if (peek() == '^') {
       if (longPeek(1) == '=') {
-        return makeOp("^=")
-      } else {
-        return makeOp("^")
+        return makeOp(TokenType.OP_XOR_EQUAL, 2)
       }
-    } else if (peek() == '~') {
-      return makeOp("~")
-    } else if (peek() == '?') {
-      return makeOp("?")
-    } else if (peek() == '.') {
-      return makeOp(".")
+
+      return makeOp(TokenType.OP_BITWISE_EXCLUSIVE_OR, 1)
+    } else if (peek() == '<') {
+      if (longPeek(1) == '<') {
+        return makeOp(TokenType.OP_LEFT_SHIFT, 2)
+      } else if (longPeek(1) == '=') {
+        return makeOp(TokenType.OP_LESS_EQUAL, 2)
+      }
+
+      return makeOp(TokenType.OP_LESS, 1)
+    } else if (peek() == '>') {
+      if (longPeek(1) == '>') {
+        return makeOp(TokenType.OP_RIGHT_SHIFT, 2)
+      } else if (longPeek(1) == '=') {
+        return makeOp(TokenType.OP_GREATER_EQUAL, 2)
+      }
+
+      return makeOp(TokenType.OP_GREATER, 1)
     } else if (peek() == '=') {
       if (longPeek(1) == '=') {
-        return makeOp("==")
-      } else {
-        return makeOp("=")
+        return makeOp(TokenType.OP_EQUAL_EQUAL, 2)
       }
+
+      return makeOp(TokenType.OP_EQUAL, 1)
+    } else if (peek() == '!') {
+      if (longPeek(1) == '=') {
+        return makeOp(TokenType.OP_NOT_EQUAL, 2)
+      }
+
+      return makeOp(TokenType.OP_NOT, 1)
     }
 
     throw LexException("Unrecognized operator", currentPosition)
