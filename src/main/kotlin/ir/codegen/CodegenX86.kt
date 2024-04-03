@@ -4,6 +4,7 @@ import fr.ancyr.jcc.ir.RegisterAllocator
 import fr.ancyr.jcc.ir.nodes.expr.IRConstExpr
 import fr.ancyr.jcc.ir.nodes.expr.IRExpr
 import fr.ancyr.jcc.ir.nodes.expr.IRTempExpr
+import fr.ancyr.jcc.ir.nodes.literal.IRBits
 import fr.ancyr.jcc.ir.nodes.literal.IRIntLiteral
 import fr.ancyr.jcc.ir.nodes.statements.*
 
@@ -11,11 +12,10 @@ class CodegenX86(private val statements: List<IRStatement>) {
   private val registerAllocator = RegisterAllocator()
   private val code = StringBuilder()
 
-  fun compileIR(): String {
+  fun generate(): String {
     code.clear()
 
     code.append("section .text\n")
-    code.append("global _start\n")
     code.append("\n")
 
     for (node in statements) {
@@ -45,16 +45,23 @@ class CodegenX86(private val statements: List<IRStatement>) {
         }
 
         is IRLabel -> {
+          if (node.global) {
+            code.append("global ${node.label}\n")
+          }
+
           code.append("${node.label}:\n")
         }
 
         is IRReturn -> {
+          val value =
+            node.expr ?: IRConstExpr(IRIntLiteral(0, IRBits.IR64Bits));
+
           if (node.isMain) {
             code.append("mov eax 0x60\n")
-            code.append("mov edi ${translateExpr(node.expr)}\n")
+            code.append("mov edi ${translateExpr(value)}\n")
             code.append("syscall\n")
           } else {
-            code.append("mov eax ${translateExpr(node.expr)}\n")
+            code.append("mov eax ${translateExpr(value)}\n")
             code.append("ret\n")
           }
 
@@ -62,6 +69,8 @@ class CodegenX86(private val statements: List<IRStatement>) {
 
         else -> throw IllegalArgumentException("Unsupported statement type")
       }
+
+      code.append("\n")
     }
 
     return code.toString()

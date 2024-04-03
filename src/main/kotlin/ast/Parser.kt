@@ -24,7 +24,7 @@ import fr.ancyr.jcc.lex.TokenType
  * = += -= *= /= %= &= ^= |= <<= >>= (note: right to left) (2)
  * , (1)
  */
-class Parser (private val tokens: List<Token>) {
+class Parser(private val tokens: List<Token>) {
   private var index = 0
 
   private var nodes = mutableListOf<Node>()
@@ -202,7 +202,7 @@ class Parser (private val tokens: List<Token>) {
     // Restore scope
     currentScope = scope.parent!!
 
-    return BlockNode(body)
+    return BlockNode(body, scope)
   }
 
 
@@ -218,7 +218,20 @@ class Parser (private val tokens: List<Token>) {
 
   private fun exprAssignments(): Expr {
     val left = exprTernary()
-    if (peek().isAnyOperator("=", "+=", "-=", "*=", "/=", "%=", "&=", "^=", "|=", "<<=", ">>=")) {
+    if (peek().isAnyOperator(
+        "=",
+        "+=",
+        "-=",
+        "*=",
+        "/=",
+        "%=",
+        "&=",
+        "^=",
+        "|=",
+        "<<=",
+        ">>="
+      )
+    ) {
       if (!isLValue(left)) {
         throw RuntimeException("Expected lvalue before assignment operator")
       }
@@ -352,7 +365,7 @@ class Parser (private val tokens: List<Token>) {
         return PrefixOpExpr(identifier, operator)
       }
 
-        throw RuntimeException("Expected identifier after prefix operator")
+      throw RuntimeException("Expected identifier after prefix operator")
     } else if (peek().isOperator("-") || peek().isOperator("+")) {
       val operator = advance()
       val expr = exprGroupArrayOrPostfix()
@@ -435,7 +448,10 @@ class Parser (private val tokens: List<Token>) {
 
   private fun addSymbolToScope(identifier: Token, type: Token) {
     currentScope.addSymbol(
-      Symbol(identifier.value as String, SymbolType.fromString(type.value as String))
+      Symbol(
+        identifier.value as String,
+        SymbolType.fromString(type.value as String)
+      )
     )
   }
 }

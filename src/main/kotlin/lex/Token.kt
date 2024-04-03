@@ -13,10 +13,46 @@ data class Token(
     )
 
     var keywords = setOf(
-      "if", "else", "while", "for", "return", "break", "continue", "int", "float", "double", "char", "void",
-      "struct", "typedef", "enum", "union", "const", "static", "extern", "register", "auto", "volatile", "inline",
-      "restrict", "sizeof", "alignof", "offsetof", "asm", "typeof", "typeof__", "va_arg", "va_list", "va_start",
-      "va_end", "va_copy", "va_arg_pack", "va_arg_pack_len", "va_arg_pack_ptr", "va_arg_pack_end", "va_arg_pack_next",
+      "if",
+      "else",
+      "while",
+      "for",
+      "return",
+      "break",
+      "continue",
+      "int",
+      "float",
+      "double",
+      "char",
+      "void",
+      "struct",
+      "typedef",
+      "enum",
+      "union",
+      "const",
+      "static",
+      "extern",
+      "register",
+      "auto",
+      "volatile",
+      "inline",
+      "restrict",
+      "sizeof",
+      "alignof",
+      "offsetof",
+      "asm",
+      "typeof",
+      "typeof__",
+      "va_arg",
+      "va_list",
+      "va_start",
+      "va_end",
+      "va_copy",
+      "va_arg_pack",
+      "va_arg_pack_len",
+      "va_arg_pack_ptr",
+      "va_arg_pack_end",
+      "va_arg_pack_next",
     )
   }
 
@@ -28,11 +64,15 @@ data class Token(
     return type == TokenType.SYMBOL && this.value == value
   }
 
-  fun isConstant() : Boolean {
+  fun isConstant(): Boolean {
     return type == TokenType.NUMBER || type == TokenType.STRING
   }
 
-  fun isIdentifier() : Boolean {
+  fun isNumber(): Boolean {
+    return type == TokenType.NUMBER
+  }
+
+  fun isIdentifier(): Boolean {
     return type == TokenType.IDENTIFIER
   }
 
@@ -50,5 +90,13 @@ data class Token(
 
   fun isAnyKeyword(vararg values: String): Boolean {
     return type == TokenType.KEYWORD && values.contains(this.value)
+  }
+
+  fun asString(): String {
+    if (value is String) {
+      return value
+    }
+
+    throw Exception("Token value is not a string")
   }
 }

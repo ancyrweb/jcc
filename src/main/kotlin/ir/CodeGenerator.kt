@@ -9,7 +9,7 @@ import fr.ancyr.jcc.ir.nodes.statements.*
 fun main() {
   val generator = CodegenX86(
     listOf(
-      IRLabel("_start"),
+      IRLabel("_start", global = true),
       IRMove(
         IRTempExpr("t1"),
         IRConstExpr(IRIntLiteral.bits64(10))
@@ -34,6 +34,6 @@ fun main() {
     )
   )
 
-  val code = generator.compileIR()
+  val code = generator.generate()
   println(code)
 }

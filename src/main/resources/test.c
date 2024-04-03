@@ -1,5 +1,7 @@
-int main(int argc, char **argv) {
-    int a = 17;
-    int b = 16;
-    return a + b;
+int main(int argc) {
+    int a = 10;
+    int b = 20;
+    int c = 30;
+
+    return a + b * c;
 }

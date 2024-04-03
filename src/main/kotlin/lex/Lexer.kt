@@ -2,7 +2,7 @@ package fr.ancyr.jcc.lex
 
 import fr.ancyr.jcc.commons.Position
 
-class Lexer (private val content: StringBuffer ){
+class Lexer(private val content: StringBuffer) {
   private val tokens = mutableListOf<Token>()
   private var cur = 0
   private var currentPosition = Position()
@@ -41,26 +41,31 @@ class Lexer (private val content: StringBuffer ){
   }
 
   fun parse(): List<Token> {
-    while(!eof()) {
+    while (!eof()) {
       startPosition.copyFrom(currentPosition)
 
       when (peek()) {
         '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> {
           addToken(anyNumber())
         }
+
         'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
         'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' -> {
           addToken(parseKeywordOrIdentifier())
         }
+
         '"' -> {
           addToken(parseString())
         }
+
         '=', '+', '-', '%', '!', '<', '>', '&', '|', '^', '~', '?', '.' -> {
           addToken(parseOperator())
         }
+
         '(', ')', '{', '}', '[', ']', ',', ';', ':' -> {
           addToken(createToken(TokenType.SYMBOL, advance()))
         }
+
         '/' -> {
           if (longPeek(1) == '/') {
             addToken(singleLineComment())
@@ -70,16 +75,20 @@ class Lexer (private val content: StringBuffer ){
             addToken(parseOperator())
           }
         }
+
         '*' -> {
           addToken(parseOperator())
         }
+
         '\n' -> {
           advance()
           nextLine()
         }
+
         ' ' -> {
           advance()
         }
+
         else -> {
           println("Unrecognized : " + peek().code)
         }
@@ -91,14 +100,14 @@ class Lexer (private val content: StringBuffer ){
 
   private fun anyNumber(): Token {
     if (peek() == '0') {
-     if (longPeek(1) == 'x') {
-       return parseHexNumber()
-     } else if (longPeek(1) == 'b') {
-       return parseBinaryNumber()
-     }
+      if (longPeek(1) == 'x') {
+        return parseHexNumber()
+      } else if (longPeek(1) == 'b') {
+        return parseBinaryNumber()
+      }
     }
 
-    var number = 0
+    var number: Long = 0L
     while (!eof() && peek().isDigit()) {
       number = number * 10 + (advance() - '0')
     }
@@ -110,22 +119,22 @@ class Lexer (private val content: StringBuffer ){
     val str = StringBuilder()
     advance(2) // Skip 0x
 
-    while(!eof() && (peek().isDigit() || (peek() in 'a'..'f') || (peek() in 'A'..'F'))) {
+    while (!eof() && (peek().isDigit() || (peek() in 'a'..'f') || (peek() in 'A'..'F'))) {
       str.append(advance())
     }
 
-    return createToken(TokenType.NUMBER, str.toString().toInt(16))
+    return createToken(TokenType.NUMBER, str.toString().toLong(16))
   }
 
   private fun parseBinaryNumber(): Token {
     val str = StringBuilder()
     advance(2) // Skip 0b
 
-    while(!eof() && (peek() == '0' || peek() == '1')) {
+    while (!eof() && (peek() == '0' || peek() == '1')) {
       str.append(advance())
     }
 
-    return createToken(TokenType.NUMBER, str.toString().toInt(2))
+    return createToken(TokenType.NUMBER, str.toString().toLong(2))
   }
 
   private fun singleLineComment(): Token {

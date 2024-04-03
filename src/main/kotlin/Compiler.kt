@@ -1,6 +1,8 @@
 package fr.ancyr.jcc
 
 import fr.ancyr.jcc.ast.Parser
+import fr.ancyr.jcc.ir.codegen.CodegenX86
+import fr.ancyr.jcc.ir.translator.AstToIrTranslator
 import fr.ancyr.jcc.lex.Lexer
 import java.io.InputStream
 
@@ -13,9 +15,13 @@ class Compiler {
     val parser = Parser(tokens)
     val ast = parser.parse()
 
-    for (node in ast) {
-      println(node)
-    }
+    val astToIrTranslator = AstToIrTranslator(ast)
+    val ir = astToIrTranslator.translate()
+
+    val codeGen = CodegenX86(ir)
+    val code = codeGen.generate()
+
+    println(code)
   }
 
   private fun getContent(stream: InputStream): StringBuffer {

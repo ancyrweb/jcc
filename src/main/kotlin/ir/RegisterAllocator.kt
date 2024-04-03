@@ -24,6 +24,10 @@ class RegisterAllocator {
   }
 
   fun allocate(label: String): String {
+    if (tempMap.containsKey(label)) {
+      return tempMap[label]!!
+    }
+
     if (realRegisters.isEmpty()) {
       throw IllegalStateException("No more registers available")
     }
@@ -35,12 +39,14 @@ class RegisterAllocator {
   }
 
   fun free(label: String) {
-    val register = tempMap[label] ?: throw IllegalArgumentException("Register not found")
+    val register =
+      tempMap[label] ?: throw IllegalArgumentException("Register not found")
     realRegisters.push(register)
     tempMap.remove(label)
   }
 
   fun getRegister(label: String): String {
-    return tempMap[label] ?: throw IllegalArgumentException("Register not found")
+    return tempMap[label]
+      ?: throw IllegalArgumentException("Register not found")
   }
 }
