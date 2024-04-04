@@ -15,9 +15,12 @@ class CodegenX86(private val statements: List<IRStatement>) {
   fun generate(): String {
     code.clear()
 
-    code.append("section .text\n")
-    code.append("\n")
+    generateCode()
 
+    return code.toString()
+  }
+
+  fun generateCode() {
     for (node in statements) {
       when (node) {
         is IRMove -> {
@@ -39,32 +42,28 @@ class CodegenX86(private val statements: List<IRStatement>) {
             IRBinOpOperand.MOD -> TODO()
           }
 
-          code.append("mov eax ${translateExpr(node.left)}\n")
-          code.append("$op eax ${translateExpr(node.right)}\n")
-          code.append("mov $dest eax\n")
+          code.append("mov rax ${translateExpr(node.left)}\n")
+          code.append("$op rax ${translateExpr(node.right)}\n")
+          code.append("mov $dest rax\n")
         }
 
         is IRLabel -> {
-          if (node.global) {
-            code.append("global ${node.label}\n")
-          }
-
           code.append("${node.label}:\n")
+
+          if (node.isFn) {
+            code.append("push rbp\n") // save caller's frame pointer
+            code.append("mov rbp rsp\n") // set up our frame pointer
+            code.append("sub rsp 128\n") // allocate stack frame
+          }
         }
 
         is IRReturn -> {
           val value =
             node.expr ?: IRConstExpr(IRIntLiteral(0, IRBits.IR64Bits));
 
-          if (node.isMain) {
-            code.append("mov eax 0x60\n")
-            code.append("mov edi ${translateExpr(value)}\n")
-            code.append("syscall\n")
-          } else {
-            code.append("mov eax ${translateExpr(value)}\n")
-            code.append("ret\n")
-          }
-
+          code.append("mov rax ${translateExpr(value)}\n") // push result into rax
+          code.append("pop rbp\n") // restore stack frame
+          code.append("ret\n") // return
         }
 
         else -> throw IllegalArgumentException("Unsupported statement type")
@@ -73,7 +72,6 @@ class CodegenX86(private val statements: List<IRStatement>) {
       code.append("\n")
     }
 
-    return code.toString()
   }
 
   private fun translateExpr(expr: IRExpr): String {

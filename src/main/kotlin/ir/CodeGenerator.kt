@@ -30,7 +30,7 @@ fun main() {
         IRTempExpr("t1"),
         IRTempExpr("t2")
       ),
-      IRReturn(IRTempExpr("t4"), true)
+      IRReturn(IRTempExpr("t4"))
     )
   )
 

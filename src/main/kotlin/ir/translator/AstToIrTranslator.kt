@@ -30,8 +30,8 @@ class AstToIrTranslator(private val ast: List<Node>) {
       return // it's a function declaration
     }
 
-    ir.add(IRLabel(fn.identifier.asString(), true))
-    var isMain = fn.identifier.asString() == "main";
+    ir.add(IRLabel(fn.identifier.asString(), true, true))
+    val isMain = fn.identifier.asString() == "main";
 
     for (node in fn.block.statements) {
       if (node is VariableDeclarationNode) {
@@ -50,9 +50,9 @@ class AstToIrTranslator(private val ast: List<Node>) {
       } else if (node is KeywordDeclarationNode) {
         if (node.keyword.isTokenType(TokenType.KEYWORD_RETURN)) {
           if (node.expr != null) {
-            ir.add(IRReturn(toExpr(node.expr), isMain))
+            ir.add(IRReturn(toExpr(node.expr)))
           } else {
-            ir.add(IRReturn(null, isMain))
+            ir.add(IRReturn(null))
           }
         } else {
           throw RuntimeException("Unknown keyword: ${node.keyword}")
