@@ -48,4 +48,8 @@ data class Token(
 
     throw Exception("Token value is not a string")
   }
+
+  override fun toString(): String {
+    return "Token($type, $value)"
+  }
 }

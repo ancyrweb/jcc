@@ -1,8 +1,7 @@
 package fr.ancyr.jcc
 
 import fr.ancyr.jcc.ast.Parser
-import fr.ancyr.jcc.ir.codegen.CodegenX86
-import fr.ancyr.jcc.ir.translator.AstToIrTranslator
+import fr.ancyr.jcc.codegen.nasm.CodeGenerator
 import fr.ancyr.jcc.lex.Lexer
 import java.io.InputStream
 
@@ -12,14 +11,11 @@ class Compiler {
     val lexer = Lexer(buffer)
     val tokens = lexer.parse()
 
- 
+
     val parser = Parser(tokens)
     val ast = parser.parse()
 
-    val astToIrTranslator = AstToIrTranslator(ast)
-    val ir = astToIrTranslator.translate()
-
-    val codeGen = CodegenX86(ir)
+    val codeGen = CodeGenerator(ast)
     val code = codeGen.generate()
 
     println(code)

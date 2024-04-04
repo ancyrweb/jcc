@@ -50,13 +50,8 @@ class Parser(private val tokens: List<Token>) {
       parseWhileStatement()
     } else if (peek().isTokenType(TokenType.KEYWORD_FOR)) {
       parseForLoopStatement()
-    } else if (peek().isAnyType(
-        TokenType.KEYWORD_BREAK,
-        TokenType.KEYWORD_CONTINUE,
-        TokenType.KEYWORD_RETURN
-      )
-    ) {
-      parseKeywordDeclaration()
+    } else if (peek().isTokenType(TokenType.KEYWORD_RETURN)) {
+      parseReturnStatement()
     } else {
       parseExprStatement()
     }
@@ -157,17 +152,17 @@ class Parser(private val tokens: List<Token>) {
     return ForLoopNode(init, condition, increment, block)
   }
 
-  private fun parseKeywordDeclaration(): Node {
+  private fun parseReturnStatement(): Node {
     val keyword = advance()
 
     if (peek().isTokenType(TokenType.SYMBOL_SEMICOLON)) {
       advance()
-      return KeywordDeclarationNode(keyword)
+      return ReturnNode(keyword)
     }
 
     val expr = expr()
     consume(TokenType.SYMBOL_SEMICOLON)
-    return KeywordDeclarationNode(keyword, expr)
+    return ReturnNode(keyword, expr)
   }
 
   private fun condExpr(): Expr {
