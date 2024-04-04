@@ -18,7 +18,6 @@ class CodeGenerator(private val nodes: List<Node>) {
   fun generate(): String {
     code.clear()
 
-
     append("")
     appendNoTab("SECTION .text")
     generateGlobals()
@@ -91,18 +90,20 @@ class CodeGenerator(private val nodes: List<Node>) {
       return
     }
 
+    allocator = MemoryAllocator(fn)
+
     appendNoTab("${fn.identifier.asString()}:")
     append("; prologue")
     append("push rbp")
     append("mov rbp, rsp\n")
-
-    allocator = MemoryAllocator(fn)
-
+    append("sub rsp, ${allocator.stackSize}")
+    
     for (child in fn.block.statements) {
       generateNode(child)
     }
 
     append("; epilogue")
+    append("add rsp, ${allocator.stackSize}")
     append("pop rbp")
     append("ret")
   }
@@ -119,16 +120,16 @@ class CodeGenerator(private val nodes: List<Node>) {
       }
 
       is BinOpExpr -> {
-        if (expr.right is BinOpExpr) {
-          generateExpr(expr.right, "rcx")
-          generateExpr(expr.left, "rax")
-          generateOp(expr.op.type, "rcx", "rax")
-        } else {
-          generateExpr(expr.left, "rax")
-          generateExpr(expr.right, "rcx")
-          generateOp(expr.op.type, "rcx", "rax")
-          append("mov $dest, rax\n")
-        }
+        generateExpr(expr.right)
+        append("push rax")
+        generateExpr(expr.left)
+        append("pop rbx")
+
+        generateOp(expr.op.type, "rbx", "rax")
+      }
+
+      is GroupExpr -> {
+        generateExpr(expr.expr)
       }
 
       else -> {

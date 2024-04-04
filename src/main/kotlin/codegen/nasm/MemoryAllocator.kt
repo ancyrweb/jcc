@@ -5,6 +5,7 @@ import fr.ancyr.jcc.ast.nodes.VariableDeclarationNode
 import fr.ancyr.jcc.lex.TokenType
 
 class MemoryAllocator(fn: FunctionNode) {
+  val stackSize: Int
   private val locations: Map<String, Location>;
 
   init {
@@ -21,6 +22,7 @@ class MemoryAllocator(fn: FunctionNode) {
       }
     }
 
+    stackSize = tempStackSize
     locations = tempLocations
   }
 
