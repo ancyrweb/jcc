@@ -43,3 +43,8 @@ After the call, the caller must clean up the stack from the arguments it pushed.
 ### Return value
 
 Always in RAX.
+
+## Other
+
+[Stack Frame Layout on x86-64](https://eli.thegreenplace.net/2011/09/06/stack-frame-layout-on-x86-64)
+[Why do I even need a red zone ?](https://devblogs.microsoft.com/oldnewthing/20190111-00/?p=100685)

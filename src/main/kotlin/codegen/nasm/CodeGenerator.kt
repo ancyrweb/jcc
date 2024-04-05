@@ -83,13 +83,17 @@ class CodeGenerator(private val nodes: List<Node>) {
     append("; prologue")
     append("push rbp")
     append("mov rbp, rsp\n")
+
+    // Note : this might not be required on System V AMD64 ABI
+    // See https://en.wikipedia.org/wiki/Red_zone_(computing)
     append("sub rsp, ${allocator.stackSize}")
-    
+
     for (child in fn.block.statements) {
       generateNode(child)
     }
 
     append("; epilogue")
+    // This too might not be needed
     append("add rsp, ${allocator.stackSize}")
     append("pop rbp")
     append("ret")
