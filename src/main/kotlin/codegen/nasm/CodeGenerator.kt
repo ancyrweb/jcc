@@ -112,8 +112,8 @@ class CodeGenerator(private val nodes: List<Node>) {
   ) {
     when (expr) {
       is ConstantExpr -> {
-        val dest = getRegisterForSize(size = destSize)
-        append("mov $dest, ${expr.token.value}")
+        // Always move a constant into RAX because we can't care less
+        append("mov rax, ${expr.token.value}")
       }
 
       is IdentifierExpr -> {
@@ -121,7 +121,7 @@ class CodeGenerator(private val nodes: List<Node>) {
 
         // Depending on the size of the source & the destination,
         // we will have to adjust the registers used
-        
+
         if (destSize.toInt() > location.size().toInt()) {
           // The destination is larger than the location
           // So we need to add padding 0
@@ -160,8 +160,9 @@ class CodeGenerator(private val nodes: List<Node>) {
 
         val identifier = expr.left.token.asString()
         val location = allocator.getLocationOrFail(identifier)
+        val dest = getRegisterForSize(size = location.size())
         generateExpr(expr.right)
-        append("mov ${location.asString()}, rax")
+        append("mov ${location.asString()}, $dest")
       }
 
       else -> {

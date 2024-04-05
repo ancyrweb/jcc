@@ -1,4 +1,5 @@
 char main() {
     short a = 0;
-    return a + 1;
+    a = a + 1;
+    return a;
 }
