@@ -1,7 +1,9 @@
 int main(int argc) {
     char a = 15;
     short b = 20;
-    int c = 35;
+    int c = 0;
 
-    return a + b + c;
+    c = a + b * 5;
+
+    return c;
 }

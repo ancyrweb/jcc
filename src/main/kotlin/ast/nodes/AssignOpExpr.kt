@@ -5,7 +5,7 @@ import fr.ancyr.jcc.lex.Token
 data class AssignOpExpr(
   val op: Token,
   val left: Node,
-  val right: Node
+  val right: Expr
 ) : Expr() {
   override fun toString(): String {
     return "AssignOp(" + op.value + ", $left, $right)"

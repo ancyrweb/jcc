@@ -61,11 +61,12 @@ class CodeGenerator(private val nodes: List<Node>) {
         if (node.expr != null) {
           generateExpr(node.expr)
         }
-
         // The epilogue is written in the function generation
       }
 
-      else -> return
+      else -> {
+        return
+      }
     }
 
     append("")
@@ -118,7 +119,20 @@ class CodeGenerator(private val nodes: List<Node>) {
         generateExpr(expr.expr)
       }
 
+      is AssignOpExpr -> {
+        if (expr.left !is IdentifierExpr) {
+          println("Left side of assignment must be an identifier")
+          return
+        }
+
+        val identifier = expr.left.token.asString()
+        val location = allocator.getLocationOrFail(identifier)
+        generateExpr(expr.right)
+        append("mov ${location.asString()}, rax")
+      }
+
       else -> {
+        println("Unrecognized expression type")
         println(expr)
         return
       }
