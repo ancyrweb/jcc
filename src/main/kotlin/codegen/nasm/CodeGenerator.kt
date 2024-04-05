@@ -6,6 +6,7 @@ import fr.ancyr.jcc.lex.TokenType
 class CodeGenerator(private val nodes: List<Node>) {
   private val code = StringBuilder()
   private lateinit var allocator: MemoryAllocator
+  private lateinit var currentFunction: FunctionNode
 
   private fun appendNoTab(str: String) {
     code.append("$str\n")
@@ -50,7 +51,9 @@ class CodeGenerator(private val nodes: List<Node>) {
           generateExpr(node.value)
         }
 
-        append("mov ${location.asString()}, rax")
+        val src = getRegisterForSize(size = location.size())
+
+        append("mov ${location.asString()}, $src")
       }
 
       is ExprStatement -> {
@@ -59,7 +62,10 @@ class CodeGenerator(private val nodes: List<Node>) {
 
       is ReturnNode -> {
         if (node.expr != null) {
-          generateExpr(node.expr)
+          val destSize =
+            MemoryAllocator.ByteSize.fromType(currentFunction.returnType.type);
+
+          generateExpr(node.expr, destSize)
         }
         // The epilogue is written in the function generation
       }
@@ -77,6 +83,7 @@ class CodeGenerator(private val nodes: List<Node>) {
       return
     }
 
+    currentFunction = fn
     allocator = MemoryAllocator(fn)
 
     appendNoTab("${fn.identifier.asString()}:")
@@ -99,15 +106,37 @@ class CodeGenerator(private val nodes: List<Node>) {
     append("ret")
   }
 
-  private fun generateExpr(expr: Expr, dest: String = "rax") {
+  private fun generateExpr(
+    expr: Expr,
+    destSize: MemoryAllocator.ByteSize = MemoryAllocator.ByteSize.QWORD
+  ) {
     when (expr) {
       is ConstantExpr -> {
+        val dest = getRegisterForSize(size = destSize)
         append("mov $dest, ${expr.token.value}")
       }
 
       is IdentifierExpr -> {
         val location = allocator.getLocationOrFail(expr.token.asString())
-        append("mov $dest, ${location.asString()}")
+
+        // Depending on the size of the source & the destination,
+        // we will have to adjust the registers used
+        
+        if (destSize.toInt() > location.size().toInt()) {
+          // The destination is larger than the location
+          // So we need to add padding 0
+          val dest = getRegisterForSize(size = destSize)
+          append("movsx $dest, ${location.asString()}")
+        } else if (destSize.toInt() < location.size().toInt()) {
+          // The destination is smaller than the location
+          // So we use the size of the source as a reference
+          val dest = getRegisterForSize(size = location.size())
+          append("mov $dest, ${location.asString()}")
+        } else {
+          // They have the same size
+          val dest = getRegisterForSize(size = destSize)
+          append("mov $dest, ${location.asString()}")
+        }
       }
 
       is BinOpExpr -> {
@@ -149,6 +178,18 @@ class CodeGenerator(private val nodes: List<Node>) {
       TokenType.OP_MINUS -> append("sub $dest, $source")
       TokenType.OP_MUL -> append("imul $dest, $source")
       else -> return
+    }
+  }
+
+  private fun getRegisterForSize(
+    r: String = "a",
+    size: MemoryAllocator.ByteSize = MemoryAllocator.ByteSize.QWORD
+  ): String {
+    return when (size) {
+      MemoryAllocator.ByteSize.BYTE -> "${r}l"
+      MemoryAllocator.ByteSize.WORD -> "${r}x"
+      MemoryAllocator.ByteSize.DWORD -> "e${r}x"
+      MemoryAllocator.ByteSize.QWORD -> "r${r}x"
     }
   }
 

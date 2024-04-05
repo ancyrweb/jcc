@@ -3,6 +3,7 @@ package fr.ancyr.jcc.codegen.nasm
 import fr.ancyr.jcc.ast.nodes.FunctionNode
 import fr.ancyr.jcc.ast.nodes.VariableDeclarationNode
 import fr.ancyr.jcc.lex.TokenType
+import java.util.*
 
 class MemoryAllocator(fn: FunctionNode) {
   val stackSize: Int
@@ -17,7 +18,7 @@ class MemoryAllocator(fn: FunctionNode) {
         val size = byteSize(node.type.type)
         tempStackSize += size
 
-        val location = MemoryLocation(tempStackSize, size)
+        val location = MemoryLocation(tempStackSize, ByteSize.fromInt(size))
         tempLocations[node.identifier.asString()] = location
       }
     }
@@ -32,36 +33,72 @@ class MemoryAllocator(fn: FunctionNode) {
   }
 
   private fun byteSize(type: TokenType): Int {
-    return 8; // For simplicity, we will always return 8 bytes
-//    return when (type) {
-//      TokenType.TYPE_INT -> 4
-//      TokenType.TYPE_CHAR -> 1
-//      TokenType.TYPE_FLOAT -> 4
-//      TokenType.TYPE_DOUBLE -> 8
-//      TokenType.TYPE_LONG -> 8
-//      TokenType.TYPE_SHORT -> 2
-//      TokenType.TYPE_LONG_LONG -> 8
-//      TokenType.TYPE_LONG_DOUBLE -> 16
-//      else -> 0
-//    }
+    return when (type) {
+      TokenType.TYPE_INT -> 4
+      TokenType.TYPE_CHAR -> 1
+      TokenType.TYPE_FLOAT -> 4
+      TokenType.TYPE_DOUBLE -> 8
+      TokenType.TYPE_LONG -> 8
+      TokenType.TYPE_SHORT -> 2
+      TokenType.TYPE_LONG_LONG -> 8
+      TokenType.TYPE_LONG_DOUBLE -> 16
+      else -> 0
+    }
   }
 
   abstract class Location {
     abstract fun asString(): String
+    abstract fun size(): ByteSize
   }
 
-  data class MemoryLocation(private val offset: Int, private val bytes: Int) :
+  data class MemoryLocation(val offset: Int, val bytes: ByteSize) :
     Location() {
     override fun asString(): String {
-      val qt = when (bytes) {
-        1 -> "byte"
-        2 -> "word"
-        4 -> "dword"
-        8 -> "qword"
-        else -> "qword"
+      val qt = bytes.toString().lowercase(Locale.getDefault())
+      return "$qt [rbp - $offset]"
+    }
+
+    override fun size(): ByteSize {
+      return bytes
+    }
+  }
+
+  enum class ByteSize {
+    BYTE, WORD, DWORD, QWORD;
+
+    fun toInt(): Int {
+      return when (this) {
+        BYTE -> 1
+        WORD -> 2
+        DWORD -> 4
+        QWORD -> 8
+      }
+    }
+
+    companion object {
+      fun fromInt(value: Int): ByteSize {
+        return when (value) {
+          1 -> BYTE
+          2 -> WORD
+          4 -> DWORD
+          8 -> QWORD
+          else -> throw Exception("Invalid byte size")
+        }
       }
 
-      return "$qt [rbp - $offset]"
+      fun fromType(type: TokenType): ByteSize {
+        return when (type) {
+          TokenType.TYPE_INT -> DWORD
+          TokenType.TYPE_CHAR -> BYTE
+          TokenType.TYPE_FLOAT -> DWORD
+          TokenType.TYPE_DOUBLE -> QWORD
+          TokenType.TYPE_LONG -> QWORD
+          TokenType.TYPE_SHORT -> WORD
+          TokenType.TYPE_LONG_LONG -> QWORD
+          TokenType.TYPE_LONG_DOUBLE -> QWORD
+          else -> throw Exception("Invalid byte size")
+        }
+      }
     }
   }
 }
