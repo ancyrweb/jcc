@@ -4,13 +4,13 @@ import fr.ancyr.jcc.ast.Parser
 import fr.ancyr.jcc.codegen.nasm.CodeGenerator
 import fr.ancyr.jcc.lex.Lexer
 import java.io.InputStream
+import java.io.OutputStream
 
-class Compiler {
-  fun compile(stream: InputStream) {
-    val buffer = getContent(stream)
+class Compiler(val input: InputStream, val output: OutputStream) {
+  fun compile() {
+    val buffer = getContent()
     val lexer = Lexer(buffer)
     val tokens = lexer.parse()
-
 
     val parser = Parser(tokens)
     val ast = parser.parse()
@@ -19,16 +19,22 @@ class Compiler {
     val code = codeGen.generate()
 
     println(code)
+
+    write(code)
   }
 
-  private fun getContent(stream: InputStream): StringBuffer {
+  private fun getContent(): StringBuffer {
     val buffer = StringBuffer()
-    var byte = stream.read()
+    var byte = input.read()
     while (byte != -1) {
       buffer.append(byte.toChar())
-      byte = stream.read()
+      byte = input.read()
     }
 
     return buffer
+  }
+
+  private fun write(code: String) {
+    output.write(code.toByteArray())
   }
 }

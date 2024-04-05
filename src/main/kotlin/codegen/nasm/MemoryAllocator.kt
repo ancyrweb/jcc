@@ -32,17 +32,18 @@ class MemoryAllocator(fn: FunctionNode) {
   }
 
   private fun byteSize(type: TokenType): Int {
-    return when (type) {
-      TokenType.TYPE_INT -> 4
-      TokenType.TYPE_CHAR -> 1
-      TokenType.TYPE_FLOAT -> 4
-      TokenType.TYPE_DOUBLE -> 8
-      TokenType.TYPE_LONG -> 8
-      TokenType.TYPE_SHORT -> 2
-      TokenType.TYPE_LONG_LONG -> 8
-      TokenType.TYPE_LONG_DOUBLE -> 16
-      else -> 0
-    }
+    return 8; // For simplicity, we will always return 8 bytes
+//    return when (type) {
+//      TokenType.TYPE_INT -> 4
+//      TokenType.TYPE_CHAR -> 1
+//      TokenType.TYPE_FLOAT -> 4
+//      TokenType.TYPE_DOUBLE -> 8
+//      TokenType.TYPE_LONG -> 8
+//      TokenType.TYPE_SHORT -> 2
+//      TokenType.TYPE_LONG_LONG -> 8
+//      TokenType.TYPE_LONG_DOUBLE -> 16
+//      else -> 0
+//    }
   }
 
   abstract class Location {

@@ -1,16 +1,20 @@
 package fr.ancyr.jcc
 
+import java.io.File
+
 fun main() {
   val fileName = "test.c"
-  val resourceFile = Thread.currentThread().contextClassLoader.getResource(fileName)
+  val output = "./out/test.asm"
 
-  if (resourceFile == null) {
+  val resourceFileUrl = Thread.currentThread().contextClassLoader.getResource(fileName)
+  if (resourceFileUrl == null) {
     println("Resource file not found: $fileName")
     return
   }
 
-  var stream = resourceFile.openStream()
+  var inputStream = resourceFileUrl.openStream()
+  var outputStream = File(output).outputStream()
 
-  val compiler = Compiler()
-  compiler.compile(stream)
+  val compiler = Compiler(inputStream, outputStream)
+  compiler.compile()
 }

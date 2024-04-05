@@ -1,3 +1,15 @@
+# JCC
+
+A simple C compiler written in Kotlin.
+Outputs GCC compatible NASM.
+
+JCC will not output the `_start` symbol.
+
+## Commands
+
+- `nasm -f elf64 out/test.asm` : convert the ASM to object file
+- `gcc -o out/test out/test.o` : creates an executable
+
 # Resources
 
 ## C Calling Convention

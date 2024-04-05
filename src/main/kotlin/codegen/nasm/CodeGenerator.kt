@@ -18,33 +18,20 @@ class CodeGenerator(private val nodes: List<Node>) {
   fun generate(): String {
     code.clear()
 
-    append("")
     appendNoTab("SECTION .text")
     generateGlobals()
-    generateStart()
     generateCode()
 
     return code.toString()
   }
 
   private fun generateGlobals() {
-    appendNoTab("global _start")
-
     for (node in nodes) {
       if (node is FunctionNode) {
         appendNoTab("global ${node.identifier.asString()}")
       }
     }
   }
-
-  private fun generateStart() {
-    appendNoTab("_start:")
-    append("call main\n")
-    append("mov rdi, rax")
-    append("mov rax, 60")
-    append("syscall")
-  }
-
 
   private fun generateCode() {
     for (node in nodes) {
@@ -53,7 +40,6 @@ class CodeGenerator(private val nodes: List<Node>) {
       }
     }
   }
-
 
   private fun generateNode(node: Node) {
     when (node) {
