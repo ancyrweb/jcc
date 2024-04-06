@@ -1,10 +1,10 @@
 package fr.ancyr.jcc.ast.nodes
 
-data class AndExpr(
+data class OrExpr(
   val left: Expr,
   val right: Expr
 ) : Expr() {
   override fun toString(): String {
-    return "AndExpr($left, $right)"
+    return "OrExpr($left, $right)"
   }
 }

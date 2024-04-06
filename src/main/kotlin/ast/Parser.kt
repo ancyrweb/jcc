@@ -236,9 +236,9 @@ class Parser(private val tokens: List<Token>) {
   private fun exprLogicalOr(): Expr {
     var left = exprLogicalAnd()
     while (peek().isTokenType(TokenType.OP_OR)) {
-      val operator = advance()
+      advance()
       val right = exprLogicalAnd()
-      left = BinOpExpr(operator.type, left, right)
+      left = OrExpr(left, right)
     }
 
     return left
@@ -247,9 +247,9 @@ class Parser(private val tokens: List<Token>) {
   private fun exprLogicalAnd(): Expr {
     var left = exprBitwiseInclusiveOr()
     while (peek().isTokenType(TokenType.OP_AND)) {
-      val operator = advance()
+      advance()
       val right = exprBitwiseInclusiveOr()
-      left = BinOpExpr(operator.type, left, right)
+      left = AndExpr(left, right)
     }
 
     return left

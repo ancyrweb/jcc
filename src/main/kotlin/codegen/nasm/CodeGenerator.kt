@@ -239,43 +239,107 @@ class CodeGenerator(private val nodes: List<Node>) {
   }
 
   private fun generateConditional(node: IfNode) {
-    val thenLabel = labelAllocator.nextLabel()
-    val elseLabel = node.elseBlock?.let { labelAllocator.nextLabel() }
     val endLabel = labelAllocator.nextLabel()
 
-    if (node.condition is ComparisonExpr) {
-      generateExpr(
-        node.condition,
-        context = ExprContext.CONDITIONAL
+    var cur: IfNode? = node
+
+    while (cur != null) {
+      val bodyLabel = labelAllocator.nextLabel()
+      val outLabel: String? =
+        if (cur.elseBlock != null || cur.elseIf != null) labelAllocator.nextLabel() else null
+
+      generateComparisons(
+        cur.condition, outLabel ?: endLabel, bodyLabel
       )
 
-      val targetLabel = elseLabel ?: endLabel
+      appendLabel(bodyLabel)
+      generateBlock(cur.thenBlock)
+      append("jmp $endLabel\n")
 
-      when (node.condition.op) {
-        TokenType.OP_EQUAL_EQUAL -> append("jne $targetLabel")
-        TokenType.OP_NOT_EQUAL -> append("je $targetLabel")
-        TokenType.OP_GREATER -> append("jle $targetLabel")
-        TokenType.OP_GREATER_EQUAL -> append("jl $targetLabel")
-        TokenType.OP_LESS -> append("jge $targetLabel")
-        TokenType.OP_LESS_EQUAL -> append("jg $targetLabel")
-        else -> throw Exception("Unsupported comparison operator")
+      if (cur.elseIf != null) {
+        appendLabel(outLabel!!)
+        cur = cur.elseIf
+      } else if (cur.elseBlock != null) {
+        appendLabel(outLabel!!)
+        generateBlock(cur.elseBlock!!)
+        cur = null
+      } else {
+        cur = null
       }
-    }
-
-    appendLabel(thenLabel)
-    generateBlock(node.thenBlock)
-
-    if (node.elseBlock != null) {
-      // Terminate the if statement
-      append("jmp $endLabel")
-
-      // Then work on the else statement
-      appendLabel(elseLabel!!)
-      generateBlock(node.elseBlock!!)
     }
 
     appendLabel(endLabel)
 
+  }
+
+  private fun generateComparisons(
+    condition: Expr,
+    outLabel: String,
+    bodyLabel: String,
+    isInAnd: Boolean = false,
+    depth: Int = 0
+  ) {
+
+    when (condition) {
+      is OrExpr -> {
+        generateComparisons(
+          condition.left,
+          outLabel,
+          bodyLabel,
+          depth = depth + 1
+        )
+        generateComparisons(
+          condition.right,
+          outLabel,
+          bodyLabel,
+          depth = depth + 1
+        )
+
+        // The overall if is contained in an OR expression, so that means
+        // branches will jump to the body label if they are true
+        if (depth == 0) {
+          append("jmp $outLabel\n")
+        }
+      }
+
+      is AndExpr -> {
+        generateComparisons(
+          condition.left,
+          outLabel,
+          bodyLabel,
+          true,
+          depth = depth + 1
+        )
+        generateComparisons(
+          condition.right,
+          outLabel,
+          bodyLabel,
+          true,
+          depth = depth + 1
+        )
+
+        // Here in AND it's the opposite, branches will jump to the out label
+        // if they are false because ALL the conditions are necessary in an end
+        // Only if all conditions are met we can reach the body
+        // And since the body follows the condition, there's no need to jump
+      }
+
+      is ComparisonExpr -> {
+        generateExpr(condition, context = ExprContext.CONDITIONAL)
+
+        if (isInAnd) {
+          // Inside "AND", any false condition should jump to the out label
+          generateInvertedJump(condition.op, outLabel)
+        } else {
+          // Otherwise, we jump to the body label if the condition is true
+          generateJump(condition.op, bodyLabel)
+        }
+      }
+
+      else -> {
+        println("Unsupported condition type")
+      }
+    }
   }
 
   private fun getRegisterForSize(
@@ -287,6 +351,30 @@ class CodeGenerator(private val nodes: List<Node>) {
       ByteSize.WORD -> "${r}x"
       ByteSize.DWORD -> "e${r}x"
       ByteSize.QWORD -> "r${r}x"
+    }
+  }
+
+  private fun generateInvertedJump(op: TokenType, target: String) {
+    when (op) {
+      TokenType.OP_EQUAL_EQUAL -> append("jne $target")
+      TokenType.OP_NOT_EQUAL -> append("je $target")
+      TokenType.OP_GREATER -> append("jle $target")
+      TokenType.OP_GREATER_EQUAL -> append("jl $target")
+      TokenType.OP_LESS -> append("jge $target")
+      TokenType.OP_LESS_EQUAL -> append("jg $target")
+      else -> throw Exception("Unsupported comparison operator")
+    }
+  }
+
+  private fun generateJump(op: TokenType, target: String) {
+    when (op) {
+      TokenType.OP_EQUAL_EQUAL -> append("je $target")
+      TokenType.OP_NOT_EQUAL -> append("jne $target")
+      TokenType.OP_GREATER -> append("jg $target")
+      TokenType.OP_GREATER_EQUAL -> append("jge $target")
+      TokenType.OP_LESS -> append("jl $target")
+      TokenType.OP_LESS_EQUAL -> append("jle $target")
+      else -> throw Exception("Unsupported comparison operator")
     }
   }
 
