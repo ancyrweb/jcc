@@ -7,6 +7,8 @@ class CodeGenerator(private val nodes: List<Node>) {
   private val code = StringBuilder()
   private lateinit var allocator: MemoryAllocator
   private lateinit var currentFunction: FunctionNode
+  private val labelAllocator = LabelAllocator()
+  private val optimize = true
 
   private fun appendNoTab(str: String) {
     code.append("$str\n")
@@ -14,6 +16,10 @@ class CodeGenerator(private val nodes: List<Node>) {
 
   private fun append(str: String) {
     code.append("\t$str\n")
+  }
+
+  private fun appendLabel(str: String) {
+    code.append("$str:\n")
   }
 
   fun generate(): String {
@@ -42,22 +48,24 @@ class CodeGenerator(private val nodes: List<Node>) {
     }
   }
 
+  private fun generateBlock(block: BlockNode) {
+    for (child in block.statements) {
+      generateNode(child)
+    }
+  }
+
   private fun generateNode(node: Node) {
     when (node) {
       is VariableDeclarationNode -> {
-        val location = allocator.getLocationOrFail(node.identifier)
-
-        if (node.value != null) {
-          generateExpr(node.value)
-        }
-
-        val src = getRegisterForSize(size = location.size())
-
-        append("mov ${location.asString()}, $src")
+        generateVariableDeclaration(node)
       }
 
       is ExprStatement -> {
         generateExpr(node.expr)
+      }
+
+      is IfNode -> {
+        generateConditional(node)
       }
 
       is ReturnNode -> {
@@ -74,8 +82,6 @@ class CodeGenerator(private val nodes: List<Node>) {
         return
       }
     }
-
-    append("")
   }
 
   private fun generateFunction(fn: FunctionNode) {
@@ -106,9 +112,28 @@ class CodeGenerator(private val nodes: List<Node>) {
     append("ret")
   }
 
+  private fun generateVariableDeclaration(node: VariableDeclarationNode) {
+    val location = allocator.getLocationOrFail(node.identifier)
+    val src = getRegisterForSize(size = location.size())
+
+    if (node.value != null) {
+      if (optimize) {
+        if (node.value is ConstantExpr) {
+          append("mov ${location.asString()}, ${node.value.value}")
+          return
+        }
+      }
+
+      generateExpr(node.value)
+    }
+
+    append("mov ${location.asString()}, $src")
+  }
+
   private fun generateExpr(
     expr: Expr,
-    destSize: ByteSize = ByteSize.QWORD
+    destSize: ByteSize = ByteSize.QWORD,
+    context: ExprContext = ExprContext.NORMAL
   ) {
     when (expr) {
       is ConstantExpr -> {
@@ -145,7 +170,31 @@ class CodeGenerator(private val nodes: List<Node>) {
         generateExpr(expr.left)
         append("pop rbx")
 
-        generateOp(expr.op, "rbx", "rax")
+        generateBinOp(expr.op, "rbx", "rax")
+      }
+
+      is ComparisonExpr -> {
+        if (optimize) {
+          if (expr.left is IdentifierExpr && expr.right is ConstantExpr) {
+            val location = allocator.getLocationOrFail(expr.left.name)
+            val dest = getRegisterForSize(size = location.size())
+
+            append("cmp ${location.asString()}, ${expr.right.value}")
+            return
+          }
+        }
+
+        generateExpr(expr.right)
+        append("push rax")
+        generateExpr(expr.left)
+        append("pop rbx")
+
+        if (context == ExprContext.CONDITIONAL) {
+          append("cmp rax, rbx")
+          return
+        } else {
+          // TODO Handle setcc
+        }
       }
 
       is GroupExpr -> {
@@ -160,6 +209,14 @@ class CodeGenerator(private val nodes: List<Node>) {
 
         val location = allocator.getLocationOrFail(expr.left.name)
         val dest = getRegisterForSize(size = location.size())
+
+        if (optimize) {
+          if (expr.right is ConstantExpr) {
+            append("mov ${location.asString()}, ${expr.right.value}")
+            return
+          }
+        }
+
         generateExpr(expr.right)
         append("mov ${location.asString()}, $dest")
       }
@@ -172,13 +229,53 @@ class CodeGenerator(private val nodes: List<Node>) {
     }
   }
 
-  private fun generateOp(type: TokenType, source: String, dest: String) {
+  private fun generateBinOp(type: TokenType, source: String, dest: String) {
     when (type) {
       TokenType.OP_PLUS -> append("add $dest, $source")
       TokenType.OP_MINUS -> append("sub $dest, $source")
       TokenType.OP_MUL -> append("imul $dest, $source")
       else -> return
     }
+  }
+
+  private fun generateConditional(node: IfNode) {
+    val thenLabel = labelAllocator.nextLabel()
+    val elseLabel = node.elseBlock?.let { labelAllocator.nextLabel() }
+    val endLabel = labelAllocator.nextLabel()
+
+    if (node.condition is ComparisonExpr) {
+      generateExpr(
+        node.condition,
+        context = ExprContext.CONDITIONAL
+      )
+
+      val targetLabel = elseLabel ?: endLabel
+
+      when (node.condition.op) {
+        TokenType.OP_EQUAL_EQUAL -> append("jne $targetLabel")
+        TokenType.OP_NOT_EQUAL -> append("je $targetLabel")
+        TokenType.OP_GREATER -> append("jle $targetLabel")
+        TokenType.OP_GREATER_EQUAL -> append("jl $targetLabel")
+        TokenType.OP_LESS -> append("jge $targetLabel")
+        TokenType.OP_LESS_EQUAL -> append("jg $targetLabel")
+        else -> throw Exception("Unsupported comparison operator")
+      }
+    }
+
+    appendLabel(thenLabel)
+    generateBlock(node.thenBlock)
+
+    if (node.elseBlock != null) {
+      // Terminate the if statement
+      append("jmp $endLabel")
+
+      // Then work on the else statement
+      appendLabel(elseLabel!!)
+      generateBlock(node.elseBlock!!)
+    }
+
+    appendLabel(endLabel)
+
   }
 
   private fun getRegisterForSize(
@@ -193,4 +290,8 @@ class CodeGenerator(private val nodes: List<Node>) {
     }
   }
 
+  enum class ExprContext {
+    NORMAL,
+    CONDITIONAL;
+  }
 }

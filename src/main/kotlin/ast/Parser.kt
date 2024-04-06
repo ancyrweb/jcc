@@ -293,7 +293,7 @@ class Parser(private val tokens: List<Token>) {
     while (peek().isAnyType(TokenType.OP_EQUAL_EQUAL, TokenType.OP_NOT_EQUAL)) {
       val operator = advance()
       val right = exprRelationalComparison()
-      left = BinOpExpr(operator.type, left, right)
+      left = ComparisonExpr(operator.type, left, right)
     }
 
     return left
@@ -310,7 +310,7 @@ class Parser(private val tokens: List<Token>) {
     ) {
       val operator = advance()
       val right = exprBitwiseShifts()
-      left = BinOpExpr(operator.type, left, right)
+      left = ComparisonExpr(operator.type, left, right)
     }
 
     return left

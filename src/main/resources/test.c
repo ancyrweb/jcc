@@ -1,5 +1,8 @@
 char main() {
-    short a = 0;
-    a = a + 1;
+    int a = 0;
+    if (a > 1) {
+        a = 2;
+    }
+
     return a;
 }
