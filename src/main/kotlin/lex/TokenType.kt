@@ -88,8 +88,4 @@ enum class TokenType {
   SYMBOL_DOT,
   SYMBOL_ARROW,
   SYMBOL_QUESTION;
-
-  public val line: Int = 0
-  public val column: Int = 0
-  public val value: Any = 0
 }

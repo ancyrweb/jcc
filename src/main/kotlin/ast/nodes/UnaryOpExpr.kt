@@ -1,12 +1,12 @@
 package fr.ancyr.jcc.ast.nodes
 
-import fr.ancyr.jcc.lex.Token
+import fr.ancyr.jcc.lex.TokenType
 
 data class UnaryOpExpr(
-  val node: Expr,
-  val op: Token
+  val expr: Expr,
+  val op: TokenType
 ) : Expr() {
   override fun toString(): String {
-    return "UnaryOp(" + op.value + ", $node)"
+    return "UnaryOp($op, $expr)"
   }
 }

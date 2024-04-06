@@ -29,7 +29,7 @@ class CodeGenerator(private val nodes: List<Node>) {
   private fun generateGlobals() {
     for (node in nodes) {
       if (node is FunctionNode) {
-        appendNoTab("global ${node.identifier.asString()}")
+        appendNoTab("global ${node.identifier}")
       }
     }
   }
@@ -45,7 +45,7 @@ class CodeGenerator(private val nodes: List<Node>) {
   private fun generateNode(node: Node) {
     when (node) {
       is VariableDeclarationNode -> {
-        val location = allocator.getLocationOrFail(node.identifier.asString())
+        val location = allocator.getLocationOrFail(node.identifier)
 
         if (node.value != null) {
           generateExpr(node.value)
@@ -63,7 +63,7 @@ class CodeGenerator(private val nodes: List<Node>) {
       is ReturnNode -> {
         if (node.expr != null) {
           val destSize =
-            MemoryAllocator.ByteSize.fromType(currentFunction.returnType.type);
+            MemoryAllocator.ByteSize.fromType(currentFunction.returnType);
 
           generateExpr(node.expr, destSize)
         }
@@ -86,7 +86,7 @@ class CodeGenerator(private val nodes: List<Node>) {
     currentFunction = fn
     allocator = MemoryAllocator(fn)
 
-    appendNoTab("${fn.identifier.asString()}:")
+    appendNoTab("${fn.identifier}:")
     append("; prologue")
     append("push rbp")
     append("mov rbp, rsp\n")
@@ -113,11 +113,11 @@ class CodeGenerator(private val nodes: List<Node>) {
     when (expr) {
       is ConstantExpr -> {
         // Always move a constant into RAX because we can't care less
-        append("mov rax, ${expr.token.value}")
+        append("mov rax, ${expr.value}")
       }
 
       is IdentifierExpr -> {
-        val location = allocator.getLocationOrFail(expr.token.asString())
+        val location = allocator.getLocationOrFail(expr.name)
 
         // Depending on the size of the source & the destination,
         // we will have to adjust the registers used
@@ -145,7 +145,7 @@ class CodeGenerator(private val nodes: List<Node>) {
         generateExpr(expr.left)
         append("pop rbx")
 
-        generateOp(expr.op.type, "rbx", "rax")
+        generateOp(expr.op, "rbx", "rax")
       }
 
       is GroupExpr -> {
@@ -158,8 +158,7 @@ class CodeGenerator(private val nodes: List<Node>) {
           return
         }
 
-        val identifier = expr.left.token.asString()
-        val location = allocator.getLocationOrFail(identifier)
+        val location = allocator.getLocationOrFail(expr.left.name)
         val dest = getRegisterForSize(size = location.size())
         generateExpr(expr.right)
         append("mov ${location.asString()}, $dest")

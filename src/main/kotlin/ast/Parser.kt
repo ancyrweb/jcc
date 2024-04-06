@@ -9,7 +9,6 @@ import fr.ancyr.jcc.lex.TokenType
 
 class Parser(private val tokens: List<Token>) {
   private var index = 0
-
   private var nodes = mutableListOf<Node>()
   private var currentScope = Scope()
 
@@ -73,7 +72,7 @@ class Parser(private val tokens: List<Token>) {
         block = blockNode()
       }
 
-      return FunctionNode(type, identifier, params, block)
+      return FunctionNode(type.type, identifier.asString(), params, block)
     }
 
     if (peek().isTokenType(TokenType.OP_EQUAL)) {
@@ -84,7 +83,7 @@ class Parser(private val tokens: List<Token>) {
     consume(TokenType.SYMBOL_SEMICOLON)
 
     addSymbolToScope(identifier, type)
-    return VariableDeclarationNode(type, identifier, expr)
+    return VariableDeclarationNode(type.type, identifier.asString(), expr)
   }
 
   private fun parseFormalParameters(): List<FormalParameterNode> {
@@ -94,7 +93,7 @@ class Parser(private val tokens: List<Token>) {
       val type = matchType()
       val identifier = matchIdentifier()
 
-      params.add(FormalParameterNode(type, identifier))
+      params.add(FormalParameterNode(type.type, identifier.asString()))
 
       if (peek().isTokenType(TokenType.SYMBOL_COMMA)) {
         advance()
@@ -153,16 +152,16 @@ class Parser(private val tokens: List<Token>) {
   }
 
   private fun parseReturnStatement(): Node {
-    val keyword = advance()
+    advance()
 
     if (peek().isTokenType(TokenType.SYMBOL_SEMICOLON)) {
       advance()
-      return ReturnNode(keyword)
+      return ReturnNode()
     }
 
     val expr = expr()
     consume(TokenType.SYMBOL_SEMICOLON)
-    return ReturnNode(keyword, expr)
+    return ReturnNode(expr)
   }
 
   private fun condExpr(): Expr {
@@ -226,7 +225,7 @@ class Parser(private val tokens: List<Token>) {
 
       val operator = advance()
       val right = exprTernary()
-      return AssignOpExpr(operator, left, right)
+      return AssignOpExpr(operator.type, left, right)
     }
 
     return left
@@ -239,7 +238,7 @@ class Parser(private val tokens: List<Token>) {
     while (peek().isTokenType(TokenType.OP_OR)) {
       val operator = advance()
       val right = exprLogicalAnd()
-      left = BinOpExpr(operator, left, right)
+      left = BinOpExpr(operator.type, left, right)
     }
 
     return left
@@ -250,7 +249,7 @@ class Parser(private val tokens: List<Token>) {
     while (peek().isTokenType(TokenType.OP_AND)) {
       val operator = advance()
       val right = exprBitwiseInclusiveOr()
-      left = BinOpExpr(operator, left, right)
+      left = BinOpExpr(operator.type, left, right)
     }
 
     return left
@@ -261,7 +260,7 @@ class Parser(private val tokens: List<Token>) {
     while (peek().isTokenType(TokenType.OP_BITWISE_INCLUSIVE_OR)) {
       val operator = advance()
       val right = exprBitwiseExclusiveOr()
-      left = BinOpExpr(operator, left, right)
+      left = BinOpExpr(operator.type, left, right)
     }
 
     return left
@@ -272,7 +271,7 @@ class Parser(private val tokens: List<Token>) {
     while (peek().isTokenType(TokenType.OP_BITWISE_EXCLUSIVE_OR)) {
       val operator = advance()
       val right = exprBitwiseAnd()
-      left = BinOpExpr(operator, left, right)
+      left = BinOpExpr(operator.type, left, right)
     }
 
     return left
@@ -283,7 +282,7 @@ class Parser(private val tokens: List<Token>) {
     while (peek().isTokenType(TokenType.OP_BITWISE_AND)) {
       val operator = advance()
       val right = exprRelationalEquality()
-      left = BinOpExpr(operator, left, right)
+      left = BinOpExpr(operator.type, left, right)
     }
 
     return left
@@ -294,7 +293,7 @@ class Parser(private val tokens: List<Token>) {
     while (peek().isAnyType(TokenType.OP_EQUAL_EQUAL, TokenType.OP_NOT_EQUAL)) {
       val operator = advance()
       val right = exprRelationalComparison()
-      left = BinOpExpr(operator, left, right)
+      left = BinOpExpr(operator.type, left, right)
     }
 
     return left
@@ -311,7 +310,7 @@ class Parser(private val tokens: List<Token>) {
     ) {
       val operator = advance()
       val right = exprBitwiseShifts()
-      left = BinOpExpr(operator, left, right)
+      left = BinOpExpr(operator.type, left, right)
     }
 
     return left
@@ -326,7 +325,7 @@ class Parser(private val tokens: List<Token>) {
     ) {
       val operator = advance()
       val right = exprTerms()
-      left = BinOpExpr(operator, left, right)
+      left = BinOpExpr(operator.type, left, right)
     }
 
     return left
@@ -337,7 +336,7 @@ class Parser(private val tokens: List<Token>) {
     while (peek().isAnyType(TokenType.OP_PLUS, TokenType.OP_MINUS)) {
       val operator = advance()
       val right = exprFactors()
-      left = BinOpExpr(operator, left, right)
+      left = BinOpExpr(operator.type, left, right)
     }
 
     return left
@@ -353,7 +352,7 @@ class Parser(private val tokens: List<Token>) {
     ) {
       val operator = advance()
       val right = exprUnaryOrPrefix()
-      left = BinOpExpr(operator, left, right)
+      left = BinOpExpr(operator.type, left, right)
     }
 
     return left
@@ -365,7 +364,7 @@ class Parser(private val tokens: List<Token>) {
 
       if (peek().isIdentifier()) {
         val identifier = matchRValue()
-        return PrefixOpExpr(identifier, operator)
+        return PrefixOpExpr(identifier, operator.type)
       }
 
       throw RuntimeException("Expected identifier after prefix operator")
@@ -373,7 +372,7 @@ class Parser(private val tokens: List<Token>) {
       val operator = advance()
       val expr = exprGroupArrayOrPostfix()
 
-      return UnaryOpExpr(expr, operator)
+      return UnaryOpExpr(expr, operator.type)
     }
 
     return exprGroupArrayOrPostfix()
@@ -393,7 +392,7 @@ class Parser(private val tokens: List<Token>) {
     if (peek().isAnyType(TokenType.OP_PLUS_PLUS, TokenType.OP_MINUS_MINUS)) {
       if (expr is IdentifierExpr || expr is ArrayAccessExpr) {
         val operator = advance()
-        return PostfixOpExpr(expr, operator)
+        return PostfixOpExpr(expr, operator.type)
       }
 
       throw RuntimeException("Expected identifier before postfix operator")
@@ -405,7 +404,7 @@ class Parser(private val tokens: List<Token>) {
   private fun exprTerminal(): Expr {
     if (peek().isConstant()) {
       val token = advance()
-      return ConstantExpr(token)
+      return ConstantExpr(token.value)
     }
 
     return matchRValue()
@@ -421,10 +420,10 @@ class Parser(private val tokens: List<Token>) {
       consume(TokenType.SYMBOL_LEFT_BRACKET)
       val index = expr()
       consume(TokenType.SYMBOL_RIGHT_BRACKET)
-      return ArrayAccessExpr(token, index)
+      return ArrayAccessExpr(token.asString(), index)
     }
 
-    return IdentifierExpr(token)
+    return IdentifierExpr(token.asString())
   }
 
   private fun matchIdentifier(): Token {
