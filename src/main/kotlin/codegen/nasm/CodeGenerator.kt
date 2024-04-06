@@ -63,7 +63,7 @@ class CodeGenerator(private val nodes: List<Node>) {
       is ReturnNode -> {
         if (node.expr != null) {
           val destSize =
-            MemoryAllocator.ByteSize.fromType(currentFunction.returnType);
+            ByteSize.fromType(currentFunction.returnType);
 
           generateExpr(node.expr, destSize)
         }
@@ -108,7 +108,7 @@ class CodeGenerator(private val nodes: List<Node>) {
 
   private fun generateExpr(
     expr: Expr,
-    destSize: MemoryAllocator.ByteSize = MemoryAllocator.ByteSize.QWORD
+    destSize: ByteSize = ByteSize.QWORD
   ) {
     when (expr) {
       is ConstantExpr -> {
@@ -183,13 +183,13 @@ class CodeGenerator(private val nodes: List<Node>) {
 
   private fun getRegisterForSize(
     r: String = "a",
-    size: MemoryAllocator.ByteSize = MemoryAllocator.ByteSize.QWORD
+    size: ByteSize = ByteSize.QWORD
   ): String {
     return when (size) {
-      MemoryAllocator.ByteSize.BYTE -> "${r}l"
-      MemoryAllocator.ByteSize.WORD -> "${r}x"
-      MemoryAllocator.ByteSize.DWORD -> "e${r}x"
-      MemoryAllocator.ByteSize.QWORD -> "r${r}x"
+      ByteSize.BYTE -> "${r}l"
+      ByteSize.WORD -> "${r}x"
+      ByteSize.DWORD -> "e${r}x"
+      ByteSize.QWORD -> "r${r}x"
     }
   }
 
