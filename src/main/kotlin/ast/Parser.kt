@@ -424,19 +424,32 @@ class Parser(private val tokens: List<Token>) {
   }
 
   private fun matchRValue(): Expr {
+    var isAddress = false
+    if (peek().isTokenType(TokenType.SYMBOL_AMPERSAND)) {
+      isAddress = true
+      advance()
+    }
+
     if (!peek().isIdentifier()) {
       throw Exception("Expected identifier at ${peek().position}")
     }
 
+    val expr: Expr
     val token = advance()
     if (peek().isTokenType(TokenType.SYMBOL_LEFT_BRACKET)) {
       consume(TokenType.SYMBOL_LEFT_BRACKET)
       val index = expr()
       consume(TokenType.SYMBOL_RIGHT_BRACKET)
-      return ArrayAccessExpr(token.asString(), index)
+      expr = ArrayAccessExpr(token.asString(), index)
+    } else {
+      expr = IdentifierExpr(token.asString())
     }
 
-    return IdentifierExpr(token.asString())
+    if (isAddress) {
+      return AddressExpr(expr)
+    }
+
+    return expr
   }
 
   private fun matchIdentifier(): Token {
@@ -466,7 +479,7 @@ class Parser(private val tokens: List<Token>) {
       throw Exception("Expected type at ${varType.position}")
     }
 
-    if (peek().isTokenType(TokenType.OP_MUL)) {
+    if (peek().isTokenType(TokenType.SYMBOL_ASTERISK)) {
       advance()
       pointer = true
     }

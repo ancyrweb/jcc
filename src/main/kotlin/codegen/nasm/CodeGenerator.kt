@@ -122,7 +122,7 @@ class CodeGenerator(private val program: Program) {
     if (node.value != null) {
       if (optimize) {
         if (node.value is ConstantExpr) {
-          append("mov ${location.asString()}, ${node.value.value}")
+          append("mov ${location.sizedLocation()}, ${node.value.value}")
           return
         }
       }
@@ -130,7 +130,7 @@ class CodeGenerator(private val program: Program) {
       genExpr(node.value)
     }
 
-    append("mov ${location.asString()}, $src")
+    append("mov ${location.sizedLocation()}, $src")
   }
 
   private fun genIf(node: IfNode) {
@@ -290,16 +290,16 @@ class CodeGenerator(private val program: Program) {
           // The destination is larger than the location
           // So we need to add padding 0
           val dest = getRegisterForSize(size = destSize)
-          append("movsx $dest, ${location.asString()}")
+          append("movsx $dest, ${location.sizedLocation()}")
         } else if (destSize.toInt() < location.size().toInt()) {
           // The destination is smaller than the location
           // So we use the size of the source as a reference
           val dest = getRegisterForSize(size = location.size())
-          append("mov $dest, ${location.asString()}")
+          append("mov $dest, ${location.sizedLocation()}")
         } else {
           // They have the same size
           val dest = getRegisterForSize(size = destSize)
-          append("mov $dest, ${location.asString()}")
+          append("mov $dest, ${location.sizedLocation()}")
         }
       }
 
@@ -332,7 +332,7 @@ class CodeGenerator(private val program: Program) {
         if (optimize) {
           if (expr.left is IdentifierExpr && expr.right is ConstantExpr) {
             val location = allocator.getLocationOrFail(expr.left.name)
-            append("cmp ${location.asString()}, ${expr.right.value}")
+            append("cmp ${location.sizedLocation()}, ${expr.right.value}")
             return
           }
         }
@@ -365,7 +365,7 @@ class CodeGenerator(private val program: Program) {
 
         if (optimize) {
           if (expr.op == TokenType.OP_EQUAL_EQUAL && expr.right is ConstantExpr) {
-            append("mov ${location.asString()}, ${expr.right.value}")
+            append("mov ${location.sizedLocation()}, ${expr.right.value}")
             return
           }
         }
@@ -373,10 +373,10 @@ class CodeGenerator(private val program: Program) {
         genExpr(expr.right)
 
         when (expr.op) {
-          TokenType.OP_EQUAL_EQUAL -> append("mov ${location.asString()}, $dest")
-          TokenType.OP_PLUS_EQUAL -> append("add ${location.asString()}, $dest")
-          TokenType.OP_MINUS_EQUAL -> append("sub ${location.asString()}, $dest")
-          TokenType.OP_MUL_EQUAL -> append("imul ${location.asString()}, $dest")
+          TokenType.OP_EQUAL_EQUAL -> append("mov ${location.sizedLocation()}, $dest")
+          TokenType.OP_PLUS_EQUAL -> append("add ${location.sizedLocation()}, $dest")
+          TokenType.OP_MINUS_EQUAL -> append("sub ${location.sizedLocation()}, $dest")
+          TokenType.OP_MUL_EQUAL -> append("imul ${location.sizedLocation()}, $dest")
           else -> {
             println("Unsupported assignment operator")
             return
@@ -398,9 +398,20 @@ class CodeGenerator(private val program: Program) {
         val location = allocator.getLocationOrFail(subExpr.name)
 
         when (op) {
-          TokenType.OP_PLUS_PLUS -> append("add ${location.asString()}, 1")
-          TokenType.OP_MINUS_MINUS -> append("sub ${location.asString()}, 1")
+          TokenType.OP_PLUS_PLUS -> append("add ${location.sizedLocation()}, 1")
+          TokenType.OP_MINUS_MINUS -> append("sub ${location.sizedLocation()}, 1")
           else -> throw Exception("Unsupported postfix operator")
+        }
+      }
+
+      is AddressExpr -> {
+        if (expr.expr is IdentifierExpr) {
+          val location = allocator.getLocationOrFail(expr.expr.name)
+          append("lea rax, ${location.location()}")
+        } else {
+          // TODO handle array access
+          println("Address operator must be applied to an identifier")
+          return
         }
       }
 

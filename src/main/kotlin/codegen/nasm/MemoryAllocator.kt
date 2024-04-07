@@ -32,15 +32,20 @@ class MemoryAllocator(fn: FunctionNode) {
   }
 
   abstract class Location {
-    abstract fun asString(): String
+    abstract fun sizedLocation(): String
+    abstract fun location(): String
     abstract fun size(): ByteSize
   }
 
   data class MemoryLocation(val offset: Int, val bytes: ByteSize) :
     Location() {
-    override fun asString(): String {
+    override fun sizedLocation(): String {
       val qt = bytes.toString().lowercase(Locale.getDefault())
-      return "$qt [rbp - $offset]"
+      return "$qt ${location()}"
+    }
+
+    override fun location(): String {
+      return "[rbp - $offset]"
     }
 
     override fun size(): ByteSize {

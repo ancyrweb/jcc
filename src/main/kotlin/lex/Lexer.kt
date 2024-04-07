@@ -58,7 +58,7 @@ class Lexer(private val content: StringBuffer) {
           addToken(parseString())
         }
 
-        '=', '+', '-', '%', '!', '<', '>', '&', '|', '^', '~', '?', '.' -> {
+        '=', '+', '-', '%', '!', '<', '>', '|', '^', '~', '?', '.' -> {
           addToken(parseOperator())
         }
 
@@ -77,7 +77,21 @@ class Lexer(private val content: StringBuffer) {
         }
 
         '*' -> {
-          addToken(parseOperator())
+          if (longPeek(1) == ' ' || longPeek(1) == '=') {
+            // Note : this will consider "int* a" as an operator
+            // TODO : fix
+            addToken(parseOperator())
+          } else {
+            addToken(parseSymbol())
+          }
+        }
+
+        '&' -> {
+          if (longPeek(1) == ' ' || longPeek(1) == '&' || longPeek(1) == '=') {
+            addToken(parseOperator())
+          } else {
+            addToken(parseSymbol())
+          }
         }
 
         '\n' -> {
@@ -239,6 +253,9 @@ class Lexer(private val content: StringBuffer) {
       ',' -> TokenType.SYMBOL_COMMA
       ';' -> TokenType.SYMBOL_SEMICOLON
       ':' -> TokenType.SYMBOL_COLON
+      '&' -> TokenType.SYMBOL_AMPERSAND
+      '.' -> TokenType.SYMBOL_DOT
+      '*' -> TokenType.SYMBOL_ASTERISK
       else -> throw LexException("Unrecognized symbol", currentPosition)
     }
 
