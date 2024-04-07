@@ -27,6 +27,10 @@ enum class ByteSize {
     }
 
     fun fromType(typedSymbol: TypedSymbol): ByteSize {
+      if (typedSymbol.pointer) {
+        return QWORD
+      }
+      
       return when (typedSymbol.type) {
         SymbolType.INT -> DWORD
         SymbolType.FLOAT -> DWORD

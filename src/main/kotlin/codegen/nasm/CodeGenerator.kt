@@ -7,6 +7,7 @@ class CodeGenerator(private val program: Program) {
   private val code = StringBuilder()
   private lateinit var allocator: MemoryAllocator
   private lateinit var currentFunction: FunctionNode
+  private lateinit var returnLabel: String
   private val labelAllocator = LabelAllocator()
   private val optimize = true
 
@@ -73,19 +74,27 @@ class CodeGenerator(private val program: Program) {
       }
 
       is ReturnNode -> {
-        if (node.expr != null) {
-          val destSize =
-            ByteSize.fromType(currentFunction.typedSymbol)
-
-          genExpr(node.expr, destSize)
-        }
-        // The epilogue is written in the function generation
+        genReturn(node)
       }
 
       else -> {
         return
       }
     }
+
+    append("")
+  }
+
+  private fun genReturn(node: ReturnNode) {
+    if (node.expr != null) {
+      val destSize =
+        ByteSize.fromType(currentFunction.typedSymbol)
+
+      genExpr(node.expr, destSize)
+      append("jmp $returnLabel")
+    }
+
+    // The epilogue is written in the function generation
   }
 
   private fun generateFunction(fn: FunctionNode) {
@@ -95,6 +104,7 @@ class CodeGenerator(private val program: Program) {
 
     currentFunction = fn
     allocator = MemoryAllocator(fn)
+    returnLabel = labelAllocator.nextLabel()
 
     appendNoTab("${fn.typedSymbol.identifier}:")
     append("; prologue")
@@ -108,6 +118,8 @@ class CodeGenerator(private val program: Program) {
     generateBlock(fn.block)
 
     append("; epilogue")
+    appendLabel(returnLabel)
+
     // This too might not be needed
     append("add rsp, ${allocator.stackSize}")
     append("pop rbp")
@@ -128,6 +140,7 @@ class CodeGenerator(private val program: Program) {
 
       genExpr(node.value)
     }
+
 
     append("mov ${location.sizedLocation()}, $src")
   }
@@ -280,6 +293,7 @@ class CodeGenerator(private val program: Program) {
       }
 
       is IdentifierExpr -> {
+
         val location = allocator.getLocationOrFail(expr.name)
 
         // Depending on the size of the source & the destination,
