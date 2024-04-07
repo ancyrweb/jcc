@@ -8,3 +8,7 @@ int main() {
 
     return *b;
 }
+
+int square(int a) {
+    return 10;
+}

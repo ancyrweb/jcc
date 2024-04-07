@@ -111,17 +111,22 @@ class CodeGenerator(private val program: Program) {
     append("push rbp")
     append("mov rbp, rsp\n")
 
-    // Note : this might not be required on System V AMD64 ABI
-    // See https://en.wikipedia.org/wiki/Red_zone_(computing)
-    append("sub rsp, ${allocator.stackSize}")
+    if (allocator.stackSize > 0) {
+      // Note : this might not be required on System V AMD64 ABI
+      // See https://en.wikipedia.org/wiki/Red_zone_(computing)
+      append("sub rsp, ${allocator.stackSize}")
+    }
 
     generateBlock(fn.block)
 
     append("; epilogue")
     appendLabel(returnLabel)
 
-    // This too might not be needed
-    append("add rsp, ${allocator.stackSize}")
+    if (allocator.stackSize > 0) {
+      // This too might not be needed
+      append("add rsp, ${allocator.stackSize}")
+    }
+    
     append("pop rbp")
     append("ret")
   }
