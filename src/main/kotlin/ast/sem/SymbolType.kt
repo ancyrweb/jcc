@@ -5,7 +5,6 @@ import fr.ancyr.jcc.lex.TokenType
 enum class SymbolType {
   INT,
   FLOAT,
-  STRING,
   CHAR,
   SHORT,
   LONG,

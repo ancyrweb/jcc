@@ -14,11 +14,11 @@ class MemoryAllocator(fn: FunctionNode) {
 
     for (node in fn.block!!.statements) {
       if (node is VariableDeclarationNode) {
-        val size = ByteSize.fromType(node.type).toInt()
+        val size = ByteSize.fromType(node.typedSymbol).toInt()
         tempStackSize += size
 
         val location = MemoryLocation(tempStackSize, ByteSize.fromInt(size))
-        tempLocations[node.identifier] = location
+        tempLocations[node.typedSymbol.identifier] = location
       }
     }
 

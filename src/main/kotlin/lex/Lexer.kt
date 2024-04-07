@@ -28,7 +28,7 @@ class Lexer(private val content: StringBuffer) {
     return content[cur + offset]
   }
 
-  private fun createToken(type: TokenType, value: Any?): Token {
+  private fun createToken(type: TokenType, value: Any? = null): Token {
     return Token(type, startPosition.clone(), value)
   }
 
@@ -177,34 +177,36 @@ class Lexer(private val content: StringBuffer) {
     }
 
     return when (val value = str.toString().lowercase()) {
-      "int" -> createToken(TokenType.TYPE_INT, null)
-      "float" -> createToken(TokenType.TYPE_FLOAT, null)
-      "double" -> createToken(TokenType.TYPE_DOUBLE, null)
-      "char" -> createToken(TokenType.TYPE_CHAR, null)
-      "void" -> createToken(TokenType.TYPE_VOID, null)
-      "long" -> createToken(TokenType.TYPE_LONG, null)
-      "short" -> createToken(TokenType.TYPE_SHORT, null)
-      "if" -> createToken(TokenType.KEYWORD_IF, null)
-      "else" -> createToken(TokenType.KEYWORD_ELSE, null)
-      "while" -> createToken(TokenType.KEYWORD_WHILE, null)
-      "for" -> createToken(TokenType.KEYWORD_FOR, null)
-      "do" -> createToken(TokenType.KEYWORD_DO, null)
-      "switch" -> createToken(TokenType.KEYWORD_SWITCH, null)
-      "case" -> createToken(TokenType.KEYWORD_CASE, null)
-      "default" -> createToken(TokenType.KEYWORD_DEFAULT, null)
-      "break" -> createToken(TokenType.KEYWORD_BREAK, null)
-      "continue" -> createToken(TokenType.KEYWORD_CONTINUE, null)
-      "return" -> createToken(TokenType.KEYWORD_RETURN, null)
-      "goto" -> createToken(TokenType.KEYWORD_GOTO, null)
-      "typedef" -> createToken(TokenType.KEYWORD_TYPEDEF, null)
-      "extern" -> createToken(TokenType.KEYWORD_EXTERN, null)
-      "static" -> createToken(TokenType.KEYWORD_STATIC, null)
-      "auto" -> createToken(TokenType.KEYWORD_AUTO, null)
-      "register" -> createToken(TokenType.KEYWORD_REGISTER, null)
-      "const" -> createToken(TokenType.KEYWORD_CONST, null)
-      "volatile" -> createToken(TokenType.KEYWORD_VOLATILE, null)
-      "restrict" -> createToken(TokenType.KEYWORD_RESTRICT, null)
-      "sizeof" -> createToken(TokenType.KEYWORD_SIZEOF, null)
+      "int" -> createToken(TokenType.TYPE_INT)
+      "float" -> createToken(TokenType.TYPE_FLOAT)
+      "double" -> createToken(TokenType.TYPE_DOUBLE)
+      "char" -> createToken(TokenType.TYPE_CHAR)
+      "void" -> createToken(TokenType.TYPE_VOID)
+      "long" -> createToken(TokenType.TYPE_LONG)
+      "short" -> createToken(TokenType.TYPE_SHORT)
+      "if" -> createToken(TokenType.KEYWORD_IF)
+      "else" -> createToken(TokenType.KEYWORD_ELSE)
+      "while" -> createToken(TokenType.KEYWORD_WHILE)
+      "for" -> createToken(TokenType.KEYWORD_FOR)
+      "do" -> createToken(TokenType.KEYWORD_DO)
+      "switch" -> createToken(TokenType.KEYWORD_SWITCH)
+      "case" -> createToken(TokenType.KEYWORD_CASE)
+      "default" -> createToken(TokenType.KEYWORD_DEFAULT)
+      "break" -> createToken(TokenType.KEYWORD_BREAK)
+      "continue" -> createToken(TokenType.KEYWORD_CONTINUE)
+      "return" -> createToken(TokenType.KEYWORD_RETURN)
+      "goto" -> createToken(TokenType.KEYWORD_GOTO)
+      "typedef" -> createToken(TokenType.KEYWORD_TYPEDEF)
+      "extern" -> createToken(TokenType.KEYWORD_EXTERN)
+      "static" -> createToken(TokenType.KEYWORD_STATIC)
+      "auto" -> createToken(TokenType.KEYWORD_AUTO)
+      "register" -> createToken(TokenType.KEYWORD_REGISTER)
+      "const" -> createToken(TokenType.KEYWORD_CONST)
+      "volatile" -> createToken(TokenType.KEYWORD_VOLATILE)
+      "restrict" -> createToken(TokenType.KEYWORD_RESTRICT)
+      "sizeof" -> createToken(TokenType.KEYWORD_SIZEOF)
+      "signed" -> createToken(TokenType.KEYWORD_SIGNED)
+      "unsigned" -> createToken(TokenType.KEYWORD_UNSIGNED)
       else -> createToken(TokenType.IDENTIFIER, value)
     }
   }

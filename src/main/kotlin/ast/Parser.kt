@@ -41,8 +41,8 @@ class Parser(private val tokens: List<Token>) {
 
   private fun parseNextNode(): Node {
 
-    return if (peek().isVarType()) {
-      parseDeclaration()
+    return if (peek().isBeginningOfTypeDeclaration()) {
+      parseVarOrFunctionDeclaration()
     } else if (peek().isTokenType(TokenType.KEYWORD_IF)) {
       parseIfStatement()
     } else if (peek().isTokenType(TokenType.KEYWORD_WHILE)) {
@@ -56,14 +56,22 @@ class Parser(private val tokens: List<Token>) {
     }
   }
 
-  private fun parseDeclaration(): Node {
-    val type = advance()
-    val identifier = matchIdentifier()
+  private fun parseVarOrFunctionDeclaration(): Node {
+    val typedSymbol = matchTypedSymbol()
+    println(typedSymbol)
+
     var expr: Expr? = null
 
     if (peek().isTokenType(TokenType.SYMBOL_LEFT_PAREN)) {
       // Function declaration
-      addSymbolToScope(identifier, type)
+      addSymbolToScope(
+        Symbol.Function(
+          typedSymbol.identifier,
+          typedSymbol.type,
+          typedSymbol.signed,
+          typedSymbol.pointer
+        )
+      )
 
       consume(TokenType.SYMBOL_LEFT_PAREN)
       val params = parseFormalParameters()
@@ -72,7 +80,7 @@ class Parser(private val tokens: List<Token>) {
         block = blockNode()
       }
 
-      return FunctionNode(type.type, identifier.asString(), params, block)
+      return FunctionNode(typedSymbol, params, block)
     }
 
     if (peek().isTokenType(TokenType.OP_EQUAL)) {
@@ -82,18 +90,24 @@ class Parser(private val tokens: List<Token>) {
 
     consume(TokenType.SYMBOL_SEMICOLON)
 
-    addSymbolToScope(identifier, type)
-    return VariableDeclarationNode(type.type, identifier.asString(), expr)
+    addSymbolToScope(
+      Symbol.Variable(
+        typedSymbol.identifier,
+        typedSymbol.type,
+        typedSymbol.signed,
+        typedSymbol.pointer
+      )
+    )
+    return VariableDeclarationNode(typedSymbol, expr)
   }
 
-  private fun parseFormalParameters(): List<FormalParameterNode> {
-    val params = mutableListOf<FormalParameterNode>()
+  private fun parseFormalParameters(): List<TypedSymbol> {
+    val params = mutableListOf<TypedSymbol>()
 
     while (!peek().isTokenType(TokenType.SYMBOL_RIGHT_PAREN)) {
-      val type = matchType()
-      val identifier = matchIdentifier()
+      val typedSymbol = matchTypedSymbol()
 
-      params.add(FormalParameterNode(type.type, identifier.asString()))
+      params.add(typedSymbol)
 
       if (peek().isTokenType(TokenType.SYMBOL_COMMA)) {
         advance()
@@ -435,25 +449,46 @@ class Parser(private val tokens: List<Token>) {
     return token
   }
 
-  private fun matchType(): Token {
-    if (!peek().isVarType()) {
+  private fun matchTypedSymbol(): TypedSymbol {
+    if (!peek().isBeginningOfTypeDeclaration()) {
       throw Exception("Expected type at ${peek().position}")
     }
 
-    val token = advance()
-    return token
+    var signed = true
+    var pointer = false
+
+    if (peek().isSignedOrUnsigned()) {
+      signed = peek().isTokenType(TokenType.KEYWORD_SIGNED)
+      advance()
+    }
+
+    val varType = advance()
+    if (!varType.isVarType()) {
+      throw Exception("Expected type at ${varType.position}")
+    }
+
+    if (peek().isTokenType(TokenType.OP_MUL)) {
+      advance()
+      pointer = true
+    }
+
+    val identifier = matchIdentifier()
+
+    return TypedSymbol(
+      identifier = identifier.asString(),
+      SymbolType.fromString(varType.type),
+      signed,
+      pointer
+    )
   }
 
   private fun isLValue(expr: Expr): Boolean {
     return expr is IdentifierExpr || expr is ArrayAccessExpr
   }
 
-  private fun addSymbolToScope(identifier: Token, varType: Token) {
+  private fun addSymbolToScope(symbol: Symbol) {
     currentScope.addSymbol(
-      Symbol(
-        identifier.value as String,
-        SymbolType.fromString(varType.type)
-      )
+      symbol
     )
   }
 }

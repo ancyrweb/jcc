@@ -35,7 +35,7 @@ class CodeGenerator(private val nodes: List<Node>) {
   private fun generateGlobals() {
     for (node in nodes) {
       if (node is FunctionNode) {
-        appendNoTab("global ${node.identifier}")
+        appendNoTab("global ${node.typedSymbol.identifier}")
       }
     }
   }
@@ -75,7 +75,7 @@ class CodeGenerator(private val nodes: List<Node>) {
       is ReturnNode -> {
         if (node.expr != null) {
           val destSize =
-            ByteSize.fromType(currentFunction.returnType);
+            ByteSize.fromType(currentFunction.typedSymbol)
 
           genExpr(node.expr, destSize)
         }
@@ -96,7 +96,7 @@ class CodeGenerator(private val nodes: List<Node>) {
     currentFunction = fn
     allocator = MemoryAllocator(fn)
 
-    appendNoTab("${fn.identifier}:")
+    appendNoTab("${fn.typedSymbol.identifier}:")
     append("; prologue")
     append("push rbp")
     append("mov rbp, rsp\n")
@@ -117,7 +117,7 @@ class CodeGenerator(private val nodes: List<Node>) {
   }
 
   private fun genVarDecl(node: VariableDeclarationNode) {
-    val location = allocator.getLocationOrFail(node.identifier)
+    val location = allocator.getLocationOrFail(node.typedSymbol.identifier)
     val src = getRegisterForSize(size = location.size())
 
     if (node.value != null) {

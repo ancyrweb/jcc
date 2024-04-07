@@ -21,8 +21,16 @@ data class Token(
     )
   }
 
+  fun isBeginningOfTypeDeclaration(): Boolean {
+    return isVarType() || isSignedOrUnsigned()
+  }
+
   fun isVarType(): Boolean {
     return varTypes.contains(type)
+  }
+
+  fun isSignedOrUnsigned(): Boolean {
+    return type == TokenType.KEYWORD_UNSIGNED || type == TokenType.KEYWORD_SIGNED
   }
 
   fun isTokenType(type: TokenType): Boolean {

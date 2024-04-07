@@ -1,5 +1,6 @@
 package fr.ancyr.jcc.codegen.nasm
 
+import fr.ancyr.jcc.ast.nodes.TypedSymbol
 import fr.ancyr.jcc.lex.TokenType
 
 enum class ByteSize {
@@ -25,8 +26,8 @@ enum class ByteSize {
       }
     }
 
-    fun fromType(type: TokenType): ByteSize {
-      return when (type) {
+    fun fromType(typedSymbol: TypedSymbol): ByteSize {
+      return when (typedSymbol.type) {
         TokenType.TYPE_INT -> DWORD
         TokenType.TYPE_CHAR -> BYTE
         TokenType.TYPE_FLOAT -> DWORD
