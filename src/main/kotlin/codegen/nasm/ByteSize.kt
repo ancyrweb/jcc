@@ -1,7 +1,7 @@
 package fr.ancyr.jcc.codegen.nasm
 
 import fr.ancyr.jcc.ast.nodes.TypedSymbol
-import fr.ancyr.jcc.lex.TokenType
+import fr.ancyr.jcc.ast.sem.SymbolType
 
 enum class ByteSize {
   BYTE, WORD, DWORD, QWORD;
@@ -28,14 +28,12 @@ enum class ByteSize {
 
     fun fromType(typedSymbol: TypedSymbol): ByteSize {
       return when (typedSymbol.type) {
-        TokenType.TYPE_INT -> DWORD
-        TokenType.TYPE_CHAR -> BYTE
-        TokenType.TYPE_FLOAT -> DWORD
-        TokenType.TYPE_DOUBLE -> QWORD
-        TokenType.TYPE_LONG -> QWORD
-        TokenType.TYPE_SHORT -> WORD
-        TokenType.TYPE_LONG_LONG -> QWORD
-        TokenType.TYPE_LONG_DOUBLE -> QWORD
+        SymbolType.INT -> DWORD
+        SymbolType.FLOAT -> DWORD
+        SymbolType.CHAR -> BYTE
+        SymbolType.SHORT -> WORD
+        SymbolType.LONG -> DWORD
+        SymbolType.DOUBLE -> QWORD
         else -> throw Exception("Invalid byte size")
       }
     }

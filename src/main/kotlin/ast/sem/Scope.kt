@@ -7,4 +7,7 @@ class Scope(val parent: Scope? = null) {
     symbolTable[symbol.name] = symbol
   }
 
+  override fun toString(): String {
+    return "Scope(${symbolTable.toString()})"
+  }
 }

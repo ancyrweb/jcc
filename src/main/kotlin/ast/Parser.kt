@@ -12,6 +12,7 @@ class Parser(private val tokens: List<Token>) {
   private var nodes = mutableListOf<Node>()
   private var currentScope = Scope()
 
+  private lateinit var program: Program
   private fun peek() = tokens[index]
   private fun eof() = index >= tokens.size
 
@@ -31,16 +32,16 @@ class Parser(private val tokens: List<Token>) {
     return operator
   }
 
-  fun parse(): List<Node> {
+  fun parse(): Program {
     while (!eof()) {
       nodes.add(parseNextNode())
     }
 
-    return nodes
+    program = Program(nodes, currentScope)
+    return program
   }
 
   private fun parseNextNode(): Node {
-
     return if (peek().isBeginningOfTypeDeclaration()) {
       parseVarOrFunctionDeclaration()
     } else if (peek().isTokenType(TokenType.KEYWORD_IF)) {
@@ -58,8 +59,6 @@ class Parser(private val tokens: List<Token>) {
 
   private fun parseVarOrFunctionDeclaration(): Node {
     val typedSymbol = matchTypedSymbol()
-    println(typedSymbol)
-
     var expr: Expr? = null
 
     if (peek().isTokenType(TokenType.SYMBOL_LEFT_PAREN)) {

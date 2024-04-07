@@ -3,7 +3,7 @@ package fr.ancyr.jcc.codegen.nasm
 import fr.ancyr.jcc.ast.nodes.*
 import fr.ancyr.jcc.lex.TokenType
 
-class CodeGenerator(private val nodes: List<Node>) {
+class CodeGenerator(private val program: Program) {
   private val code = StringBuilder()
   private lateinit var allocator: MemoryAllocator
   private lateinit var currentFunction: FunctionNode
@@ -33,7 +33,7 @@ class CodeGenerator(private val nodes: List<Node>) {
   }
 
   private fun generateGlobals() {
-    for (node in nodes) {
+    for (node in program.nodes) {
       if (node is FunctionNode) {
         appendNoTab("global ${node.typedSymbol.identifier}")
       }
@@ -41,7 +41,7 @@ class CodeGenerator(private val nodes: List<Node>) {
   }
 
   private fun generateCode() {
-    for (node in nodes) {
+    for (node in program.nodes) {
       if (node is FunctionNode) {
         generateFunction(node)
       }
@@ -49,6 +49,7 @@ class CodeGenerator(private val nodes: List<Node>) {
   }
 
   private fun generateBlock(block: BlockNode) {
+    println(block.scope)
     for (child in block.statements) {
       generateNode(child)
     }
@@ -105,9 +106,7 @@ class CodeGenerator(private val nodes: List<Node>) {
     // See https://en.wikipedia.org/wiki/Red_zone_(computing)
     append("sub rsp, ${allocator.stackSize}")
 
-    for (child in fn.block.statements) {
-      generateNode(child)
-    }
+    generateBlock(fn.block)
 
     append("; epilogue")
     // This too might not be needed
