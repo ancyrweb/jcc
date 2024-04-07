@@ -57,15 +57,19 @@ class CodeGenerator(private val nodes: List<Node>) {
   private fun generateNode(node: Node) {
     when (node) {
       is VariableDeclarationNode -> {
-        generateVariableDeclaration(node)
+        genVarDecl(node)
       }
 
       is ExprStatement -> {
-        generateExpr(node.expr)
+        genExpr(node.expr)
       }
 
       is IfNode -> {
-        generateConditional(node)
+        genIf(node)
+      }
+
+      is WhileNode -> {
+        genWhile(node)
       }
 
       is ReturnNode -> {
@@ -73,7 +77,7 @@ class CodeGenerator(private val nodes: List<Node>) {
           val destSize =
             ByteSize.fromType(currentFunction.returnType);
 
-          generateExpr(node.expr, destSize)
+          genExpr(node.expr, destSize)
         }
         // The epilogue is written in the function generation
       }
@@ -112,7 +116,7 @@ class CodeGenerator(private val nodes: List<Node>) {
     append("ret")
   }
 
-  private fun generateVariableDeclaration(node: VariableDeclarationNode) {
+  private fun genVarDecl(node: VariableDeclarationNode) {
     val location = allocator.getLocationOrFail(node.identifier)
     val src = getRegisterForSize(size = location.size())
 
@@ -124,13 +128,13 @@ class CodeGenerator(private val nodes: List<Node>) {
         }
       }
 
-      generateExpr(node.value)
+      genExpr(node.value)
     }
 
     append("mov ${location.asString()}, $src")
   }
 
-  private fun generateExpr(
+  private fun genExpr(
     expr: Expr,
     destSize: ByteSize = ByteSize.QWORD,
     context: ExprContext = ExprContext.NORMAL
@@ -165,9 +169,9 @@ class CodeGenerator(private val nodes: List<Node>) {
       }
 
       is BinOpExpr -> {
-        generateExpr(expr.right)
+        genExpr(expr.right)
         append("push rax")
-        generateExpr(expr.left)
+        genExpr(expr.left)
         append("pop rbx")
 
         generateBinOp(expr.op, "rbx", "rax")
@@ -184,9 +188,9 @@ class CodeGenerator(private val nodes: List<Node>) {
           }
         }
 
-        generateExpr(expr.right)
+        genExpr(expr.right)
         append("push rax")
-        generateExpr(expr.left)
+        genExpr(expr.left)
         append("pop rbx")
 
         if (context == ExprContext.CONDITIONAL) {
@@ -198,7 +202,7 @@ class CodeGenerator(private val nodes: List<Node>) {
       }
 
       is GroupExpr -> {
-        generateExpr(expr.expr)
+        genExpr(expr.expr)
       }
 
       is AssignOpExpr -> {
@@ -217,7 +221,7 @@ class CodeGenerator(private val nodes: List<Node>) {
           }
         }
 
-        generateExpr(expr.right)
+        genExpr(expr.right)
         append("mov ${location.asString()}, $dest")
       }
 
@@ -238,7 +242,7 @@ class CodeGenerator(private val nodes: List<Node>) {
     }
   }
 
-  private fun generateConditional(node: IfNode) {
+  private fun genIf(node: IfNode) {
     val endLabel = labelAllocator.nextLabel()
 
     var cur: IfNode? = node
@@ -249,7 +253,10 @@ class CodeGenerator(private val nodes: List<Node>) {
         if (cur.elseBlock != null || cur.elseIf != null) labelAllocator.nextLabel() else null
 
       generateComparisons(
-        cur.condition, outLabel ?: endLabel, bodyLabel
+        cur.condition,
+        outLabel ?: endLabel,
+        bodyLabel,
+        context = ExprContext.CONDITIONAL
       )
 
       appendLabel(bodyLabel)
@@ -269,7 +276,25 @@ class CodeGenerator(private val nodes: List<Node>) {
     }
 
     appendLabel(endLabel)
+  }
 
+  private fun genWhile(node: WhileNode) {
+    val startLabel = labelAllocator.nextLabel()
+    val bodyLabel = labelAllocator.nextLabel()
+    val endLabel = labelAllocator.nextLabel()
+
+    appendLabel(startLabel)
+    generateComparisons(
+      node.condition,
+      endLabel,
+      bodyLabel,
+      context = ExprContext.LOOP
+    )
+
+    appendLabel(bodyLabel)
+    generateBlock(node.block)
+    append("jmp $startLabel\n")
+    appendLabel(endLabel)
   }
 
   private fun generateComparisons(
@@ -277,7 +302,8 @@ class CodeGenerator(private val nodes: List<Node>) {
     outLabel: String,
     bodyLabel: String,
     isInAnd: Boolean = false,
-    depth: Int = 0
+    depth: Int = 0,
+    context: ExprContext
   ) {
 
     when (condition) {
@@ -286,13 +312,15 @@ class CodeGenerator(private val nodes: List<Node>) {
           condition.left,
           outLabel,
           bodyLabel,
-          depth = depth + 1
+          depth = depth + 1,
+          context = context
         )
         generateComparisons(
           condition.right,
           outLabel,
           bodyLabel,
-          depth = depth + 1
+          depth = depth + 1,
+          context = context
         )
 
         // The overall if is contained in an OR expression, so that means
@@ -308,14 +336,16 @@ class CodeGenerator(private val nodes: List<Node>) {
           outLabel,
           bodyLabel,
           true,
-          depth = depth + 1
+          depth = depth + 1,
+          context = context
         )
         generateComparisons(
           condition.right,
           outLabel,
           bodyLabel,
           true,
-          depth = depth + 1
+          depth = depth + 1,
+          context = context
         )
 
         // Here in AND it's the opposite, branches will jump to the out label
@@ -325,7 +355,7 @@ class CodeGenerator(private val nodes: List<Node>) {
       }
 
       is ComparisonExpr -> {
-        generateExpr(condition, context = ExprContext.CONDITIONAL)
+        genExpr(condition, context = ExprContext.CONDITIONAL)
 
         if (isInAnd) {
           // Inside "AND", any false condition should jump to the out label
@@ -333,6 +363,12 @@ class CodeGenerator(private val nodes: List<Node>) {
         } else {
           // Otherwise, we jump to the body label if the condition is true
           generateJump(condition.op, bodyLabel)
+
+          if (context == ExprContext.LOOP) {
+            if (depth == 0) {
+              append("jmp $outLabel\n")
+            }
+          }
         }
       }
 
@@ -380,6 +416,7 @@ class CodeGenerator(private val nodes: List<Node>) {
 
   enum class ExprContext {
     NORMAL,
-    CONDITIONAL;
+    CONDITIONAL,
+    LOOP
   }
 }

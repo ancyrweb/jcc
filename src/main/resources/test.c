@@ -1,9 +1,8 @@
 char main() {
     int a = 0;
-    if (a > 1 && a < 3) {
-        a = 10;
-    } else if (a < 0) {
-        a = 11;
+
+    while (a < 10) {
+        a = a + 1;
     }
 
     return a;
