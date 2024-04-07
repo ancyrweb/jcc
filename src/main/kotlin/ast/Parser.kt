@@ -425,8 +425,13 @@ class Parser(private val tokens: List<Token>) {
 
   private fun matchRValue(): Expr {
     var isAddress = false
+    var isDereference = false
+
     if (peek().isTokenType(TokenType.SYMBOL_AMPERSAND)) {
       isAddress = true
+      advance()
+    } else if (peek().isTokenType(TokenType.SYMBOL_ASTERISK)) {
+      isDereference = true
       advance()
     }
 
@@ -447,6 +452,8 @@ class Parser(private val tokens: List<Token>) {
 
     if (isAddress) {
       return AddressExpr(expr)
+    } else if (isDereference) {
+      return DereferenceExpr(expr)
     }
 
     return expr

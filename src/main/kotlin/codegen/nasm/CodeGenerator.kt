@@ -49,7 +49,6 @@ class CodeGenerator(private val program: Program) {
   }
 
   private fun generateBlock(block: BlockNode) {
-    println(block.scope)
     for (child in block.statements) {
       generateNode(child)
     }
@@ -413,6 +412,11 @@ class CodeGenerator(private val program: Program) {
           println("Address operator must be applied to an identifier")
           return
         }
+      }
+
+      is DereferenceExpr -> {
+        genExpr(expr.expr)
+        append("mov rax, [rax]")
       }
 
       else -> {
