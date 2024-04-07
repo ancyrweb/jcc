@@ -333,8 +333,6 @@ class CodeGenerator(private val nodes: List<Node>) {
         if (optimize) {
           if (expr.left is IdentifierExpr && expr.right is ConstantExpr) {
             val location = allocator.getLocationOrFail(expr.left.name)
-            val dest = getRegisterForSize(size = location.size())
-
             append("cmp ${location.asString()}, ${expr.right.value}")
             return
           }
@@ -387,29 +385,20 @@ class CodeGenerator(private val nodes: List<Node>) {
         }
       }
 
-      is PostfixOpExpr -> {
-        if (expr.expr !is IdentifierExpr) {
-          throw Exception("Postfix operator must be applied to an identifier")
+      is PostfixOpExpr, is PrefixOpExpr -> {
+        // Very ugly
+        val subExpr =
+          if (expr is PostfixOpExpr) expr.expr else (expr as PrefixOpExpr).expr
+        val op =
+          if (expr is PostfixOpExpr) expr.op else (expr as PrefixOpExpr).op
+
+        if (subExpr !is IdentifierExpr) {
+          throw Exception("Postfix/Prefix operator must be applied to an identifier")
         }
 
-        val location = allocator.getLocationOrFail(expr.expr.name)
+        val location = allocator.getLocationOrFail(subExpr.name)
 
-        when (expr.op) {
-          TokenType.OP_PLUS_PLUS -> append("add ${location.asString()}, 1")
-          TokenType.OP_MINUS_MINUS -> append("sub ${location.asString()}, 1")
-          else -> throw Exception("Unsupported postfix operator")
-        }
-      }
-
-      is PrefixOpExpr -> {
-        // The support isn't very good but it is what it is
-        if (expr.expr !is IdentifierExpr) {
-          throw Exception("Postfix operator must be applied to an identifier")
-        }
-
-        val location = allocator.getLocationOrFail(expr.expr.name)
-
-        when (expr.op) {
+        when (op) {
           TokenType.OP_PLUS_PLUS -> append("add ${location.asString()}, 1")
           TokenType.OP_MINUS_MINUS -> append("sub ${location.asString()}, 1")
           else -> throw Exception("Unsupported postfix operator")
