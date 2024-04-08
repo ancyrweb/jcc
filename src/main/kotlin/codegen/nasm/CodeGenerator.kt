@@ -117,6 +117,28 @@ class CodeGenerator(private val program: Program) {
       append("sub rsp, ${allocator.stackSize}")
     }
 
+    val parameterRegisters =
+      mutableListOf(
+        Register.RDI,
+        Register.RSI,
+        Register.RDX,
+        Register.RCX,
+        Register.R8,
+        Register.R9
+      )
+
+    for (node in fn.parameters) {
+      if (parameterRegisters.isEmpty()) {
+        break
+      }
+      
+      val register = parameterRegisters.removeFirst()
+      val name = register.name(ByteSize.fromType(node))
+      val location = allocator.getLocationOrFail(node.identifier)
+
+      append("mov ${location.sizedLocation()}, $name")
+    }
+
     generateBlock(fn.block)
 
     append("; epilogue")
@@ -126,14 +148,14 @@ class CodeGenerator(private val program: Program) {
       // This too might not be needed
       append("add rsp, ${allocator.stackSize}")
     }
-    
+
     append("pop rbp")
     append("ret")
   }
 
   private fun genVarDecl(node: VariableDeclarationNode) {
     val location = allocator.getLocationOrFail(node.typedSymbol.identifier)
-    val src = getRegisterForSize(size = location.size())
+    val src = Register.RAX.name(size = location.size())
 
     if (node.value != null) {
       if (optimize) {
@@ -307,16 +329,16 @@ class CodeGenerator(private val program: Program) {
         if (destSize.toInt() > location.size().toInt()) {
           // The destination is larger than the location
           // So we need to add padding 0
-          val dest = getRegisterForSize(size = destSize)
+          val dest = Register.RAX.name(destSize)
           append("movsx $dest, ${location.sizedLocation()}")
         } else if (destSize.toInt() < location.size().toInt()) {
           // The destination is smaller than the location
           // So we use the size of the source as a reference
-          val dest = getRegisterForSize(size = location.size())
+          val dest = Register.RAX.name(destSize)
           append("mov $dest, ${location.sizedLocation()}")
         } else {
           // They have the same size
-          val dest = getRegisterForSize(size = destSize)
+          val dest = Register.RAX.name(destSize)
           append("mov $dest, ${location.sizedLocation()}")
         }
       }
@@ -379,7 +401,7 @@ class CodeGenerator(private val program: Program) {
         }
 
         val location = allocator.getLocationOrFail(expr.left.name)
-        val dest = getRegisterForSize(size = location.size())
+        val dest = Register.RAX.name(location.size())
 
         if (optimize) {
           if (expr.op == TokenType.OP_EQUAL_EQUAL && expr.right is ConstantExpr) {
@@ -443,19 +465,6 @@ class CodeGenerator(private val program: Program) {
         println(expr)
         return
       }
-    }
-  }
-
-
-  private fun getRegisterForSize(
-    r: String = "a",
-    size: ByteSize = ByteSize.QWORD
-  ): String {
-    return when (size) {
-      ByteSize.BYTE -> "${r}l"
-      ByteSize.WORD -> "${r}x"
-      ByteSize.DWORD -> "e${r}x"
-      ByteSize.QWORD -> "r${r}x"
     }
   }
 
