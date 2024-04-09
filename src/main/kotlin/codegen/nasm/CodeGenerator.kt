@@ -44,12 +44,12 @@ class CodeGenerator(private val program: Program) {
   private fun generateCode() {
     for (node in program.nodes) {
       if (node is FunctionNode) {
-        generateFunction(node)
+        genFunction(node)
       }
     }
   }
 
-  private fun generateBlock(block: BlockNode) {
+  private fun genBlock(block: BlockNode) {
     for (child in block.statements) {
       generateNode(child)
     }
@@ -81,8 +81,6 @@ class CodeGenerator(private val program: Program) {
         return
       }
     }
-
-    append("")
   }
 
   private fun genReturn(node: ReturnNode) {
@@ -97,7 +95,7 @@ class CodeGenerator(private val program: Program) {
     // The epilogue is written in the function generation
   }
 
-  private fun generateFunction(fn: FunctionNode) {
+  private fun genFunction(fn: FunctionNode) {
     if (fn.block == null) {
       return
     }
@@ -117,6 +115,22 @@ class CodeGenerator(private val program: Program) {
       append("sub rsp, ${allocator.stackSize}")
     }
 
+    genFunParameters(fn)
+    genBlock(fn.block)
+
+    append("; epilogue")
+    appendLabel(returnLabel)
+
+    if (allocator.stackSize > 0) {
+      // This too might not be needed
+      append("add rsp, ${allocator.stackSize}")
+    }
+
+    append("pop rbp")
+    append("ret")
+  }
+
+  private fun genFunParameters(fn: FunctionNode) {
     val parameterRegisters =
       mutableListOf(
         Register.RDI,
@@ -133,24 +147,18 @@ class CodeGenerator(private val program: Program) {
       }
 
       val register = parameterRegisters.removeFirst()
+      val size = ByteSize.fromType(node)
       val name = register.name(ByteSize.fromType(node))
       val location = allocator.getLocationOrFail(node.identifier)
 
-      append("mov ${location.sizedLocation()}, $name")
+      if (size.toInt() <= 2) {
+        // Fetch only the last bits
+        append("mov ${Register.RAX.name(size)}, $name")
+        append("mov ${location.sizedLocation()}, ${Register.RAX.name(size)}")
+      } else {
+        append("mov ${location.sizedLocation()}, $name")
+      }
     }
-
-    generateBlock(fn.block)
-
-    append("; epilogue")
-    appendLabel(returnLabel)
-
-    if (allocator.stackSize > 0) {
-      // This too might not be needed
-      append("add rsp, ${allocator.stackSize}")
-    }
-
-    append("pop rbp")
-    append("ret")
   }
 
   private fun genVarDecl(node: VariableDeclarationNode) {
@@ -190,7 +198,7 @@ class CodeGenerator(private val program: Program) {
       )
 
       appendLabel(bodyLabel)
-      generateBlock(cur.thenBlock)
+      genBlock(cur.thenBlock)
       append("jmp $endLabel\n")
 
       if (cur.elseIf != null) {
@@ -198,7 +206,7 @@ class CodeGenerator(private val program: Program) {
         cur = cur.elseIf
       } else if (cur.elseBlock != null) {
         appendLabel(outLabel!!)
-        generateBlock(cur.elseBlock!!)
+        genBlock(cur.elseBlock!!)
         cur = null
       } else {
         cur = null
@@ -222,7 +230,7 @@ class CodeGenerator(private val program: Program) {
     )
 
     appendLabel(bodyLabel)
-    generateBlock(node.block)
+    genBlock(node.block)
     append("jmp $startLabel\n")
     appendLabel(endLabel)
   }

@@ -30,13 +30,13 @@ enum class ByteSize {
       if (typedSymbol.pointer) {
         return QWORD
       }
-      
+
       return when (typedSymbol.type) {
         SymbolType.INT -> DWORD
         SymbolType.FLOAT -> DWORD
         SymbolType.CHAR -> BYTE
         SymbolType.SHORT -> WORD
-        SymbolType.LONG -> DWORD
+        SymbolType.LONG -> QWORD
         SymbolType.DOUBLE -> QWORD
         else -> throw Exception("Invalid byte size")
       }

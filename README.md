@@ -40,6 +40,46 @@ The following registers are to be saved by the caller:
 As well as any registers that are used to pass arguments to the subroutine.
 After the call, the caller must clean up the stack from the arguments it pushed.
 
+### Callee's Behavior
+
+#### GCC x86-64
+
+On GCC x86-64, values of 1 and 2 bytes are first stored into a EAX and then
+only the lower 8 or 16 bits are copied onto local variables.
+Also, these parameters are 4-byte aligned and are stored AFTER the local
+variables.
+
+```c
+int fn(short a) {
+    return 0;
+}
+```
+
+Would yield
+
+```asm
+fn:
+        push    rbp
+        mov     rbp, rsp
+        mov     eax, edi
+        mov     WORD PTR [rbp-4], ax
+        mov     eax, 0
+        pop     rbp
+        ret
+```
+
+#### ICX x86-64
+
+On the other hands the ICX compiler stores the parameters early on the stack (
+before the local variables) and align the local parameters to 8 bytes.
+
+#### ICC x86-64
+
+ICC directly store the content of the parameters into the local variables no
+matter their size.
+
+```c
+
 ### Return value
 
 Always in RAX.

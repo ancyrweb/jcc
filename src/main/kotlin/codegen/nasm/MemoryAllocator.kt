@@ -17,11 +17,6 @@ class MemoryAllocator(fn: FunctionNode) {
     // Every actual parameter will be moved to the stack after the function prologue
     for (parameter in fn.parameters) {
       val size = ByteSize.fromType(parameter)
-      if (size.toInt() <= 2) {
-        throw Exception("Unsupported parameter size on the stack")
-      }
-
-
       if (availableRegisters == 0) {
         tempLocations[parameter.identifier] =
           StackLocation(argumentStartOffset, size)
@@ -40,6 +35,12 @@ class MemoryAllocator(fn: FunctionNode) {
         availableRegisters--
       }
 
+    }
+
+    // Not the most efficient, but OK for now
+    if (tempStackSize % 16 != 0) {
+      val padding = 16 - (tempStackSize % 16)
+      tempStackSize += padding
     }
 
     for (node in fn.block!!.statements) {
