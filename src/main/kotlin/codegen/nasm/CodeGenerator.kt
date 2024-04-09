@@ -11,6 +11,17 @@ class CodeGenerator(private val program: Program) {
   private val labelAllocator = LabelAllocator()
   private val optimize = true
 
+  val fnCallRegisters =
+    listOf(
+      Register.RDI,
+      Register.RSI,
+      Register.RDX,
+      Register.RCX,
+      Register.R8,
+      Register.R9
+    )
+
+
   private fun appendNoTab(str: String) {
     code.appendNoTab(str)
   }
@@ -131,15 +142,7 @@ class CodeGenerator(private val program: Program) {
   }
 
   private fun genFunParameters(fn: FunctionNode) {
-    val parameterRegisters =
-      mutableListOf(
-        Register.RDI,
-        Register.RSI,
-        Register.RDX,
-        Register.RCX,
-        Register.R8,
-        Register.R9
-      )
+    val parameterRegisters = fnCallRegisters.toMutableList()
 
     for (node in fn.parameters) {
       if (parameterRegisters.isEmpty()) {
@@ -466,6 +469,36 @@ class CodeGenerator(private val program: Program) {
       is DereferenceExpr -> {
         genExpr(expr.expr)
         append("mov rax, [rax]")
+      }
+
+      is FunctionCallExpr -> {
+        // I think this is a naive implementation of a function call
+        // it doesn't cover the case for more than 6 arguments (although it's rare, unless
+        // you're calling a variadic function)
+        // And it may not handle nested calls properly
+        // However at this point I lack the knowledge to implement a more robust solution
+
+        if (expr.arguments.size > fnCallRegisters.size) {
+          // TODO : handle the case of more than 6 arguments
+          println("Too many arguments")
+          return
+        }
+
+        for (argument in expr.arguments) {
+          genExpr(argument)
+          append("push rax")
+        }
+
+        var registerIndex = expr.arguments.size
+
+        while (registerIndex > 0) {
+          val register = fnCallRegisters[registerIndex - 1]
+          append("pop ${register.name(ByteSize.QWORD)}")
+          registerIndex--
+        }
+
+        append("call ${expr.identifier}")
+        return
       }
 
       else -> {

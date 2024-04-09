@@ -446,6 +446,23 @@ class Parser(private val tokens: List<Token>) {
       val index = expr()
       consume(TokenType.SYMBOL_RIGHT_BRACKET)
       expr = ArrayAccessExpr(token.asString(), index)
+    } else if (peek().isTokenType(TokenType.SYMBOL_LEFT_PAREN)) {
+      consume(TokenType.SYMBOL_LEFT_PAREN)
+
+      val args = mutableListOf<Expr>()
+      while (!peek().isTokenType(TokenType.SYMBOL_RIGHT_PAREN)) {
+        args.add(expr())
+
+        if (peek().isTokenType(TokenType.SYMBOL_RIGHT_PAREN)) {
+          break
+        }
+
+        consume(TokenType.SYMBOL_COMMA)
+      }
+
+      consume(TokenType.SYMBOL_RIGHT_PAREN)
+
+      expr = FunctionCallExpr(token.asString(), args)
     } else {
       expr = IdentifierExpr(token.asString())
     }

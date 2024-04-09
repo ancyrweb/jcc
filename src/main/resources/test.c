@@ -1,7 +1,7 @@
-int fn(short a, short b, short c, short d) {
-    int x1 = 0;
-    int x2 = 0;
-    long x3 = 1;
-    long x4 = 100;
-    return 0;
+int main() {
+    return sum(20, 30);
+}
+
+int sum(int a, int b) {
+    return a + b;
 }
