@@ -4,7 +4,7 @@ import fr.ancyr.jcc.ast.nodes.*
 import fr.ancyr.jcc.lex.TokenType
 
 class CodeGenerator(private val program: Program) {
-  private val code = StringBuilder()
+  private val code = CodeBuffer()
   private lateinit var allocator: MemoryAllocator
   private lateinit var currentFunction: FunctionNode
   private lateinit var returnLabel: String
@@ -12,15 +12,15 @@ class CodeGenerator(private val program: Program) {
   private val optimize = true
 
   private fun appendNoTab(str: String) {
-    code.append("$str\n")
+    code.appendNoTab(str)
   }
 
   private fun append(str: String) {
-    code.append("\t$str\n")
+    code.append(str)
   }
 
   private fun appendLabel(str: String) {
-    code.append("$str:\n")
+    code.appendLabel(str)
   }
 
   fun generate(): String {
@@ -131,7 +131,7 @@ class CodeGenerator(private val program: Program) {
       if (parameterRegisters.isEmpty()) {
         break
       }
-      
+
       val register = parameterRegisters.removeFirst()
       val name = register.name(ByteSize.fromType(node))
       val location = allocator.getLocationOrFail(node.identifier)

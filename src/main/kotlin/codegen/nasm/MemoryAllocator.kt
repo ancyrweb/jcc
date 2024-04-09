@@ -2,15 +2,14 @@ package fr.ancyr.jcc.codegen.nasm
 
 import fr.ancyr.jcc.ast.nodes.FunctionNode
 import fr.ancyr.jcc.ast.nodes.VariableDeclarationNode
-import java.util.*
 
 class MemoryAllocator(fn: FunctionNode) {
   val stackSize: Int
-  private val locations: Map<String, Location>
+  private val locations: Map<String, StackLocation>
 
   init {
     var tempStackSize = 0
-    val tempLocations = mutableMapOf<String, Location>()
+    val tempLocations = mutableMapOf<String, StackLocation>()
 
     var availableRegisters = 6
     var argumentStartOffset = 16
@@ -25,7 +24,7 @@ class MemoryAllocator(fn: FunctionNode) {
 
       if (availableRegisters == 0) {
         tempLocations[parameter.identifier] =
-          MemoryLocation(argumentStartOffset, size)
+          StackLocation(argumentStartOffset, size)
 
         // Subtle note : the elements pushed onto the stacks
         // for function invocation are always the 64-bit values
@@ -37,7 +36,7 @@ class MemoryAllocator(fn: FunctionNode) {
       } else {
         tempStackSize += size.toInt()
         tempLocations[parameter.identifier] =
-          MemoryLocation(-tempStackSize, size)
+          StackLocation(-tempStackSize, size)
         availableRegisters--
       }
 
@@ -48,7 +47,7 @@ class MemoryAllocator(fn: FunctionNode) {
         val size = ByteSize.fromType(node.typedSymbol)
         tempStackSize += size.toInt()
         tempLocations[node.typedSymbol.identifier] =
-          MemoryLocation(-tempStackSize, size)
+          StackLocation(-tempStackSize, size)
       }
     }
 
@@ -56,40 +55,8 @@ class MemoryAllocator(fn: FunctionNode) {
     locations = tempLocations
   }
 
-  fun getLocationOrFail(identifier: String): Location {
+  fun getLocationOrFail(identifier: String): StackLocation {
     return locations[identifier]
       ?: throw Exception("Location not found for $identifier")
-  }
-
-  fun moveParametersToStack() {
-
-  }
-
-  abstract class Location {
-    abstract fun sizedLocation(): String
-    abstract fun location(): String
-    abstract fun size(): ByteSize
-  }
-
-  data class MemoryLocation(val offset: Int, val bytes: ByteSize) :
-    Location() {
-    override fun sizedLocation(): String {
-      val qt = bytes.toString().lowercase(Locale.getDefault())
-      return "$qt ${location()}"
-    }
-
-    override fun location(): String {
-      return if (offset > 0) {
-        "[rbp + $offset]"
-      } else if (offset < 0) {
-        "[rbp - ${-offset}]"
-      } else {
-        "[rbp]"
-      }
-    }
-
-    override fun size(): ByteSize {
-      return bytes
-    }
   }
 }
