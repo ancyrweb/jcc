@@ -149,6 +149,20 @@ class IRGenerator(private val program: Program) {
           return temp
         }
 
+        is FunctionCallExpr -> {
+          val arguments = mutableListOf<IRTemp>()
+          for (arg in node.arguments) {
+            val temp = genExpr(arg)
+            arguments.add(IRTemp(temp))
+          }
+
+          val temp = temps.next()
+          val expr = IRCall(node.identifier, IRTemp(temp), arguments)
+          graph.add(expr)
+
+          return temp
+        }
+
         else -> throw IllegalArgumentException("Invalid expression: $node")
       }
     }

@@ -1,4 +1,3 @@
 package fr.ancyr.jcc.ir.nodes.expr
 
-class IRFunction {
-}
+open class IRSymbol : IRExpr()
