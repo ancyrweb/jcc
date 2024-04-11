@@ -1,7 +1,5 @@
 int main() {
-    return sum(20, 30);
-}
-
-int sum(int a, int b) {
-    return a + b;
+    int a = 1 + ((2 + 4) / 3) + (4 * 5);
+    int *b = &a;
+    a = *b + 1;
 }

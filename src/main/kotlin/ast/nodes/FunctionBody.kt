@@ -1,7 +1,7 @@
 package fr.ancyr.jcc.ast.nodes
 
-data class FunctionNode(
+data class FunctionBody(
   val typedSymbol: TypedSymbol,
   val parameters: List<TypedSymbol>,
-  val block: BlockNode? = null // If null, it's a function declaration
+  val block: BlockNode
 ) : Node()

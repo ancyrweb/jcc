@@ -1,9 +1,9 @@
 package fr.ancyr.jcc.codegen.nasm
 
-import fr.ancyr.jcc.ast.nodes.FunctionNode
+import fr.ancyr.jcc.ast.nodes.FunctionBody
 import fr.ancyr.jcc.ast.nodes.VariableDeclarationNode
 
-class MemoryAllocator(fn: FunctionNode) {
+class MemoryAllocator(fn: FunctionBody) {
   val stackSize: Int
   private val locations: Map<String, StackLocation>
 

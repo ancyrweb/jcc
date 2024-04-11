@@ -79,7 +79,11 @@ class Parser(private val tokens: List<Token>) {
         block = blockNode()
       }
 
-      return FunctionNode(typedSymbol, params, block)
+      if (block == null) {
+        return FunctionDefinition(typedSymbol, params)
+      }
+
+      return FunctionBody(typedSymbol, params, block)
     }
 
     if (peek().isTokenType(TokenType.OP_EQUAL)) {

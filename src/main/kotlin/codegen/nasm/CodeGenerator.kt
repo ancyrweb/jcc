@@ -6,7 +6,7 @@ import fr.ancyr.jcc.lex.TokenType
 class CodeGenerator(private val program: Program) {
   private val code = CodeBuffer()
   private lateinit var allocator: MemoryAllocator
-  private lateinit var currentFunction: FunctionNode
+  private lateinit var currentFunction: FunctionBody
   private lateinit var returnLabel: String
   private val labelAllocator = LabelAllocator()
   private val optimize = true
@@ -46,7 +46,7 @@ class CodeGenerator(private val program: Program) {
 
   private fun generateGlobals() {
     for (node in program.nodes) {
-      if (node is FunctionNode) {
+      if (node is FunctionBody) {
         appendNoTab("global ${node.typedSymbol.identifier}")
       }
     }
@@ -54,7 +54,7 @@ class CodeGenerator(private val program: Program) {
 
   private fun generateCode() {
     for (node in program.nodes) {
-      if (node is FunctionNode) {
+      if (node is FunctionBody) {
         genFunction(node)
       }
     }
@@ -106,11 +106,7 @@ class CodeGenerator(private val program: Program) {
     // The epilogue is written in the function generation
   }
 
-  private fun genFunction(fn: FunctionNode) {
-    if (fn.block == null) {
-      return
-    }
-
+  private fun genFunction(fn: FunctionBody) {
     currentFunction = fn
     allocator = MemoryAllocator(fn)
     returnLabel = labelAllocator.nextLabel()
@@ -141,7 +137,7 @@ class CodeGenerator(private val program: Program) {
     append("ret")
   }
 
-  private fun genFunParameters(fn: FunctionNode) {
+  private fun genFunParameters(fn: FunctionBody) {
     val parameterRegisters = fnCallRegisters.toMutableList()
 
     for (node in fn.parameters) {
