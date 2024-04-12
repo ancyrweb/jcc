@@ -23,7 +23,6 @@ class Compiler(val input: InputStream, val output: OutputStream) {
     val code = codeGen.generate()
 
     println(code)
-
     // write(code)
   }
 

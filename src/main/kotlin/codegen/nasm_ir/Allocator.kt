@@ -1,5 +1,8 @@
 package fr.ancyr.jcc.codegen.nasm_ir
 
+import fr.ancyr.jcc.ast.nodes.TypedSymbol
+import fr.ancyr.jcc.ast.sem.Symbol
+import fr.ancyr.jcc.ast.sem.SymbolType
 import fr.ancyr.jcc.ir.IRFunction
 import fr.ancyr.jcc.ir.nodes.expr.*
 import fr.ancyr.jcc.ir.nodes.stmt.IRMove
@@ -17,15 +20,100 @@ class Allocator(fn: IRFunction) {
     Register.r11,
   )
 
-  private val bindings: Map<String, Register>
+  private val argumentRegisters = listOf(
+    Register.rdi,
+    Register.rsi,
+    Register.rdx,
+    Register.rcx,
+    Register.r8,
+    Register.r9,
+  )
+
+  val tempBindings: Map<String, Register>
+  val varBindings: Map<String, Variable>
+  val stackSize: Int
+
+  fun getSize(sym: TypedSymbol): Int {
+    if (sym.pointer) {
+      return 8
+    }
+
+    return when (sym.type) {
+      SymbolType.INT -> 4
+      SymbolType.CHAR -> 1
+      SymbolType.SHORT -> 2
+      SymbolType.LONG -> 8
+      SymbolType.FLOAT -> 4
+      SymbolType.DOUBLE -> 8
+    }
+  }
+
+  fun getSize(sym: Symbol.Variable): Int {
+    if (sym.pointer) {
+      return 8
+    }
+
+    return when (sym.type) {
+      SymbolType.INT -> 4
+      SymbolType.CHAR -> 1
+      SymbolType.SHORT -> 2
+      SymbolType.LONG -> 8
+      SymbolType.FLOAT -> 4
+      SymbolType.DOUBLE -> 8
+    }
+  }
 
   init {
     // First allocate temporaries
     val liveness = buildLiveness(fn)
     val groups = buildGroups(liveness)
-    this.bindings = buildBindings(groups, liveness)
+    this.tempBindings = buildBindings(groups, liveness)
 
     // Then allocate arguments & local variables
+    val varBindings = mutableMapOf<String, Variable>()
+    var tempStackSize = 0
+    var argumentStartOffset = 16
+    var registerIndex = 0
+
+    // Every actual parameter will be moved to the stack after the function prologue
+    for (parameter in fn.parameters) {
+      val size = getSize(parameter)
+      if (registerIndex == argumentRegisters.size) {
+        varBindings[parameter.identifier] =
+          Variable(argumentStartOffset, size)
+
+        // Subtle note : the elements pushed onto the stacks
+        // for function invocation are always the 64-bit values
+        // of the register, so each parameter always take up 8 bytes
+        // however if we insert a 32-bit value or a 16-bit value we may
+        // have garbage data into the first 4 bytes or 6 bytes
+        // TODO : handle the code to manipulate 2-byte and 1-byte data
+        argumentStartOffset += 8
+      } else {
+        tempStackSize += size
+        varBindings[parameter.identifier] =
+          Variable(-tempStackSize, size)
+        registerIndex--
+      }
+    }
+
+    // Alignment
+    // Not the most efficient, but OK for now
+    if (tempStackSize % 16 != 0) {
+      val padding = 16 - (tempStackSize % 16)
+      tempStackSize += padding
+    }
+
+    for (node in fn.scope.symbolTable) {
+      val variable = node.value as Symbol.Variable;
+      val size = getSize(variable)
+
+      tempStackSize += size
+      varBindings[variable.name] = Variable(-tempStackSize, size)
+    }
+
+    this.varBindings = varBindings
+    this.stackSize = tempStackSize
   }
 
   /**

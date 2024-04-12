@@ -1,22 +1,156 @@
 package fr.ancyr.jcc.codegen.nasm_ir
 
+import fr.ancyr.jcc.codegen.shared.CodeBuffer
 import fr.ancyr.jcc.ir.IRFunction
 import fr.ancyr.jcc.ir.IRProgram
+import fr.ancyr.jcc.ir.nodes.expr.*
+import fr.ancyr.jcc.ir.nodes.stmt.IRMove
 
 class CodeGenerator(val program: IRProgram) {
-  fun generate(): String {
-    for (fn in program.functions) {
-      genFn(fn)
-    }
+  private val code = CodeBuffer()
+  private lateinit var allocator: Allocator
 
-    return ""
+  fun generate(): String {
+    code.clear()
+
+    appendNoTab("SECTION .text")
+    generateGlobals()
+    generateCode()
+
+    return code.toString()
+  }
+
+  private fun generateGlobals() {
+    for (node in program.functions)
+      appendNoTab("global ${node.typedSymbol.identifier}")
+  }
+
+
+  private fun generateCode() {
+    for (node in program.functions) {
+      genFn(node)
+
+    }
   }
 
   fun genFn(fn: IRFunction) {
-    val allocator = Allocator(fn)
+    allocator = Allocator(fn)
+
+    appendNoTab("${fn.typedSymbol.identifier}:")
+    append("; prologue")
+    append("push rbp")
+    append("mov rbp, rsp")
+
+
+    if (allocator.stackSize > 0) {
+      // Note : this might not be required on System V AMD64 ABI
+      // See https://en.wikipedia.org/wiki/Red_zone_(computing)
+      append("sub rsp, ${allocator.stackSize}")
+    }
+
+    append("")
 
     for (ir in fn.nodes) {
-      // println(ir)
+      when (ir) {
+        is IRMove -> {
+          val dest = getOperand(ir.dest)
+          val src = when (ir.src) {
+            is IRConst -> {
+              ir.src.value.toString()
+            }
+
+            is IRTemp -> {
+              getOperand(ir.src)
+            }
+
+            is IRVar -> {
+              getOperand(ir.src)
+            }
+
+            is IRBinop -> {
+              val left = getOperand(ir.src.left)
+              val right = getOperand(ir.src.right)
+
+              when (ir.src.op) {
+                IRBinop.BinopOperator.PLUS -> {
+                  append("add $left, $right")
+                }
+
+                IRBinop.BinopOperator.MINUS -> {
+                  append("sub $left, $right")
+                }
+
+                IRBinop.BinopOperator.MUL -> {
+                  append("imul $left, $right")
+                }
+
+                IRBinop.BinopOperator.DIV -> {
+                  append("mov rax, $left")
+                  append("cqo")
+                  append("idiv $right")
+                }
+              }
+
+              left
+            }
+
+            is IRDereference -> {
+              getOperand(ir.src.node, true)
+            }
+
+            is IRAddress -> {
+              getOperand(ir.src.node, true)
+            }
+
+
+            else -> {
+              "unhandled"
+            }
+          }
+
+          append("mov $dest, $src")
+        }
+      }
     }
+
+    append("; epilogue")
+
+    if (allocator.stackSize > 0) {
+      // This too might not be needed
+      append("add rsp, ${allocator.stackSize}")
+    }
+
+    append("pop rbp")
+    append("ret")
+  }
+
+  private fun getOperand(symbol: IRExpr, rawLocation: Boolean = false): String {
+    return when (symbol) {
+      is IRVar -> {
+        val variable = allocator.varBindings[symbol.name]!!
+        if (rawLocation) variable.location() else variable.sizedLocation()
+      }
+
+      is IRTemp -> {
+        val register = allocator.tempBindings[symbol.name]!!
+        register.getName(8)
+      }
+
+      else -> {
+        throw Exception("Invalid destination")
+      }
+    }
+  }
+
+  private fun appendNoTab(str: String) {
+    code.appendNoTab(str)
+  }
+
+  private fun append(str: String) {
+    code.append(str)
+  }
+
+  private fun appendLabel(str: String) {
+    code.appendLabel(str)
   }
 }

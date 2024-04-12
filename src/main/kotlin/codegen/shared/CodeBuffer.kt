@@ -1,4 +1,4 @@
-package fr.ancyr.jcc.codegen.nasm
+package fr.ancyr.jcc.codegen.shared
 
 class CodeBuffer(private val code: StringBuilder = StringBuilder()) {
   fun appendNoTab(str: String) {

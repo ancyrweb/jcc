@@ -35,12 +35,8 @@ class IRGenerator(private val program: Program) {
 
         graph.add(IRNoop())
       }
-
-      for (node in graph) {
-        println(node)
-      }
-
-      return IRFunction(fn.typedSymbol, fn.parameters, graph)
+      
+      return IRFunction(fn.typedSymbol, fn.parameters, graph, fn.block.scope)
     }
 
     private fun genVarDecl(node: VariableDeclarationNode) {

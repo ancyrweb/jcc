@@ -134,4 +134,12 @@ class Register(val variants: List<Variant>) {
   override fun toString(): String {
     return "Reg(${variants[0].name})"
   }
+
+  fun get(size: Int): Variant {
+    return variants.first { it.byteSize == size }
+  }
+
+  fun getName(size: Int): String {
+    return variants.first { it.byteSize == size }.name
+  }
 }

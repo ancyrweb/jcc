@@ -1,6 +1,7 @@
 package fr.ancyr.jcc.codegen.nasm
 
 import fr.ancyr.jcc.ast.nodes.*
+import fr.ancyr.jcc.codegen.shared.CodeBuffer
 import fr.ancyr.jcc.lex.TokenType
 
 class CodeGenerator(private val program: Program) {
