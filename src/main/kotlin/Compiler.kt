@@ -1,6 +1,7 @@
 package fr.ancyr.jcc
 
 import fr.ancyr.jcc.ast.Parser
+import fr.ancyr.jcc.codegen.nasm_ir.CodeGenerator
 import fr.ancyr.jcc.ir.IRGenerator
 import fr.ancyr.jcc.lex.Lexer
 import java.io.InputStream
@@ -18,7 +19,10 @@ class Compiler(val input: InputStream, val output: OutputStream) {
     val irGen = IRGenerator(ast)
     val ir = irGen.generate()
 
-    println(ir)
+    val codeGen = CodeGenerator(ir)
+    val code = codeGen.generate()
+
+    println(code)
 
     // write(code)
   }

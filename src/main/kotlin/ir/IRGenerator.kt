@@ -4,25 +4,28 @@ import fr.ancyr.jcc.ast.nodes.*
 import fr.ancyr.jcc.ir.nodes.expr.*
 import fr.ancyr.jcc.ir.nodes.stmt.IRMove
 import fr.ancyr.jcc.ir.nodes.stmt.IRNoop
+import fr.ancyr.jcc.ir.nodes.stmt.IRStmt
 import fr.ancyr.jcc.lex.TokenType
 
 class IRGenerator(private val program: Program) {
-  fun generate(): String {
+  fun generate(): IRProgram {
+    val functions = mutableListOf<IRFunction>()
+
     for (node in program.nodes) {
       if (node is FunctionBody) {
-        FunctionIRGenerator(node).generate()
+        functions.add(FunctionIRGenerator(node).generate())
       }
     }
 
-    return ""
+    return IRProgram(functions)
   }
 
 
-  class FunctionIRGenerator(val fn: FunctionBody) {
-    val graph = mutableListOf<Any>()
-    val temps = TempGenerator()
+  class FunctionIRGenerator(private val fn: FunctionBody) {
+    private val graph = mutableListOf<IRStmt>()
+    private val temps = TempGenerator()
 
-    fun generate() {
+    fun generate(): IRFunction {
       for (node in fn.block.statements) {
         when (node) {
           is VariableDeclarationNode -> genVarDecl(node)
@@ -36,15 +39,17 @@ class IRGenerator(private val program: Program) {
       for (node in graph) {
         println(node)
       }
+
+      return IRFunction(fn.typedSymbol, fn.parameters, graph)
     }
 
     private fun genVarDecl(node: VariableDeclarationNode) {
       if (node.value != null) {
-        val temp = genExpr(node.value)
+        val sym = genExpr(node.value)
         graph.add(
           IRMove(
             IRVar(node.typedSymbol.identifier),
-            IRTemp(temp)
+            sym
           )
         )
       }
@@ -54,12 +59,12 @@ class IRGenerator(private val program: Program) {
       genExpr(node.expr)
     }
 
-    private fun genExpr(node: Expr): String {
+    private fun genExpr(node: Expr): IRSymbol {
       when (node) {
         is ConstantExpr -> {
-          val temp = temps.next()
+          val temp = IRTemp(temps.next())
           val expr = IRMove(
-            IRTemp(temp),
+            temp,
             IRConst(node.value as Number)
           )
 
@@ -67,10 +72,14 @@ class IRGenerator(private val program: Program) {
           return temp
         }
 
+        is IdentifierExpr -> {
+          return IRVar(node.name)
+        }
+
         is BinOpExpr -> {
           val left = genExpr(node.left)
           val right = genExpr(node.right)
-          val temp = temps.next()
+          val temp = IRTemp(temps.next())
 
           val op = when (node.op) {
             TokenType.OP_PLUS -> IRBinop.BinopOperator.PLUS
@@ -81,8 +90,8 @@ class IRGenerator(private val program: Program) {
           }
 
           val expr = IRMove(
-            IRTemp(temp),
-            IRBinop(op, IRTemp(left), IRTemp(right))
+            temp,
+            IRBinop(op, left, right)
           )
 
           graph.add(expr)
@@ -99,9 +108,9 @@ class IRGenerator(private val program: Program) {
             throw IllegalArgumentException("Invalid expression: $node")
           }
 
-          val temp = temps.next()
+          val temp = IRTemp(temps.next())
           val expr = IRMove(
-            IRTemp(temp),
+            temp,
             IRAddress(IRVar(node.expr.name))
           )
 
@@ -115,9 +124,9 @@ class IRGenerator(private val program: Program) {
             throw IllegalArgumentException("Invalid expression: $node")
           }
 
-          val temp = temps.next()
+          val temp = IRTemp(temps.next())
           val expr = IRMove(
-            IRTemp(temp),
+            temp,
             IRDereference(IRVar(node.expr.name))
           )
 
@@ -127,14 +136,14 @@ class IRGenerator(private val program: Program) {
         }
 
         is AssignOpExpr -> {
-          val temp = genExpr(node.right)
+          val sym = genExpr(node.right)
 
           if (node.left is IdentifierExpr) {
             when (node.op) {
               TokenType.OP_EQUAL -> {
                 val expr = IRMove(
                   IRVar(node.left.name),
-                  IRTemp(temp)
+                  sym
                 )
 
                 graph.add(expr)
@@ -146,18 +155,18 @@ class IRGenerator(private val program: Program) {
             throw IllegalArgumentException("Invalid expression: $node")
           }
 
-          return temp
+          return sym
         }
 
         is FunctionCallExpr -> {
-          val arguments = mutableListOf<IRTemp>()
+          val arguments = mutableListOf<IRSymbol>()
           for (arg in node.arguments) {
-            val temp = genExpr(arg)
-            arguments.add(IRTemp(temp))
+            val sym = genExpr(arg)
+            arguments.add(sym)
           }
 
-          val temp = temps.next()
-          val expr = IRCall(node.identifier, IRTemp(temp), arguments)
+          val temp = IRTemp(temps.next())
+          val expr = IRMove(temp, IRCall(node.identifier, arguments))
           graph.add(expr)
 
           return temp
