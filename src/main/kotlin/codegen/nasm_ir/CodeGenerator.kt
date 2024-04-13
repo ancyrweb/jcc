@@ -5,6 +5,8 @@ import fr.ancyr.jcc.ir.IRFunction
 import fr.ancyr.jcc.ir.IRProgram
 import fr.ancyr.jcc.ir.nodes.expr.*
 import fr.ancyr.jcc.ir.nodes.stmt.IRMove
+import fr.ancyr.jcc.ir.nodes.stmt.IRNoop
+import fr.ancyr.jcc.ir.nodes.stmt.IRReturn
 
 class CodeGenerator(val program: IRProgram) {
   private val code = CodeBuffer()
@@ -50,6 +52,8 @@ class CodeGenerator(val program: IRProgram) {
 
     append("")
 
+
+
     for (ir in fn.nodes) {
       when (ir) {
         is IRMove -> {
@@ -59,11 +63,7 @@ class CodeGenerator(val program: IRProgram) {
               ir.src.value.toString()
             }
 
-            is IRTemp -> {
-              getOperand(ir.src)
-            }
-
-            is IRVar -> {
+            is IRTemp, is IRVar -> {
               getOperand(ir.src)
             }
 
@@ -102,15 +102,38 @@ class CodeGenerator(val program: IRProgram) {
               getOperand(ir.src.node, true)
             }
 
-
             else -> {
               "unhandled"
             }
           }
 
-          append("mov $dest, $src")
+          if (ir.src is IRAddress) {
+            append("lea $dest, $src")
+          } else if (ir.src is IRDereference) {
+            append("mov $dest, $src")
+            append("mov $dest, [${dest}]")
+          } else {
+            append("mov $dest, $src")
+          }
+        }
+
+        is IRReturn -> {
+          if (ir.sym != null) {
+            val src = getOperand(ir.sym)
+            append("mov rax, $src")
+          }
+        }
+
+        is IRNoop -> {
+          append("")
+
+        }
+
+        else -> {
+          append("; unhandled: $ir")
         }
       }
+
     }
 
     append("; epilogue")

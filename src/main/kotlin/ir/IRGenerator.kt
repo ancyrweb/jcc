@@ -4,6 +4,7 @@ import fr.ancyr.jcc.ast.nodes.*
 import fr.ancyr.jcc.ir.nodes.expr.*
 import fr.ancyr.jcc.ir.nodes.stmt.IRMove
 import fr.ancyr.jcc.ir.nodes.stmt.IRNoop
+import fr.ancyr.jcc.ir.nodes.stmt.IRReturn
 import fr.ancyr.jcc.ir.nodes.stmt.IRStmt
 import fr.ancyr.jcc.lex.TokenType
 
@@ -30,12 +31,13 @@ class IRGenerator(private val program: Program) {
         when (node) {
           is VariableDeclarationNode -> genVarDecl(node)
           is ExprStatement -> genExprStmt(node)
+          is ReturnNode -> genReturn(node)
           else -> throw IllegalArgumentException("Invalid statement: $node")
         }
 
         graph.add(IRNoop())
       }
-      
+
       return IRFunction(fn.typedSymbol, fn.parameters, graph, fn.block.scope)
     }
 
@@ -53,6 +55,16 @@ class IRGenerator(private val program: Program) {
 
     private fun genExprStmt(node: ExprStatement) {
       genExpr(node.expr)
+    }
+
+    private fun genReturn(node: ReturnNode) {
+      if (node.expr == null) {
+        graph.add(IRReturn())
+        return
+      }
+
+      val sym = genExpr(node.expr)
+      graph.add(IRReturn(sym))
     }
 
     private fun genExpr(node: Expr): IRSymbol {

@@ -7,6 +7,7 @@ import fr.ancyr.jcc.ir.IRFunction
 import fr.ancyr.jcc.ir.nodes.expr.*
 import fr.ancyr.jcc.ir.nodes.stmt.IRMove
 import fr.ancyr.jcc.ir.nodes.stmt.IRNoop
+import fr.ancyr.jcc.ir.nodes.stmt.IRReturn
 
 class Allocator(fn: IRFunction) {
   private val registers = listOf(
@@ -187,6 +188,12 @@ class Allocator(fn: IRFunction) {
         }
 
         is IRNoop -> {}
+        is IRReturn -> {
+          if (node.sym is IRTemp) {
+            live(node.sym.name, i)
+          }
+        }
+
         else -> {
           throw RuntimeException("Unrecognized node: $node")
         }
