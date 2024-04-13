@@ -1,6 +1,7 @@
 package fr.ancyr.jcc.codegen.nasm_ir
 
 import fr.ancyr.jcc.codegen.shared.CodeBuffer
+import fr.ancyr.jcc.codegen.shared.LabelAllocator
 import fr.ancyr.jcc.ir.IRFunction
 import fr.ancyr.jcc.ir.IRProgram
 import fr.ancyr.jcc.ir.nodes.expr.*
@@ -8,9 +9,10 @@ import fr.ancyr.jcc.ir.nodes.stmt.IRMove
 import fr.ancyr.jcc.ir.nodes.stmt.IRNoop
 import fr.ancyr.jcc.ir.nodes.stmt.IRReturn
 
-class CodeGenerator(val program: IRProgram) {
+class CodeGenerator(private val program: IRProgram) {
   private val code = CodeBuffer()
   private lateinit var allocator: Allocator
+  private val labelAllocator = LabelAllocator()
 
   fun generate(): String {
     code.clear()
@@ -38,11 +40,12 @@ class CodeGenerator(val program: IRProgram) {
   fun genFn(fn: IRFunction) {
     allocator = Allocator(fn)
 
+    var exitLabel = labelAllocator.nextLabel()
+
     appendNoTab("${fn.typedSymbol.identifier}:")
     append("; prologue")
     append("push rbp")
     append("mov rbp, rsp")
-
 
     if (allocator.stackSize > 0) {
       // Note : this might not be required on System V AMD64 ABI
@@ -51,8 +54,6 @@ class CodeGenerator(val program: IRProgram) {
     }
 
     append("")
-
-
 
     for (ir in fn.nodes) {
       when (ir) {
@@ -121,6 +122,7 @@ class CodeGenerator(val program: IRProgram) {
           if (ir.sym != null) {
             val src = getOperand(ir.sym)
             append("mov rax, $src")
+            append("jmp $exitLabel")
           }
         }
 
@@ -137,6 +139,7 @@ class CodeGenerator(val program: IRProgram) {
     }
 
     append("; epilogue")
+    appendLabel(exitLabel)
 
     if (allocator.stackSize > 0) {
       // This too might not be needed
