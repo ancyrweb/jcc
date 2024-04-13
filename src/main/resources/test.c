@@ -1,5 +1,3 @@
-int main() {
-    int a = 0;
-    int *b = &a;
-    return *b;
+int sum(int a, int b, int c) {
+    return a + b + c;
 }

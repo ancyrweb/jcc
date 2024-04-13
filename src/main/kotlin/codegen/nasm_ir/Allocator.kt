@@ -10,59 +10,63 @@ import fr.ancyr.jcc.ir.nodes.stmt.IRNoop
 import fr.ancyr.jcc.ir.nodes.stmt.IRReturn
 
 class Allocator(fn: IRFunction) {
-  private val registers = listOf(
-    Register.rcx,
-    Register.rdx,
-    Register.rsi,
-    Register.rdi,
-    Register.r8,
-    Register.r9,
-    Register.r10,
-    Register.r11,
-  )
+  companion object {
+    val registers = listOf(
+      Register.rcx,
+      Register.rdx,
+      Register.rsi,
+      Register.rdi,
+      Register.r8,
+      Register.r9,
+      Register.r10,
+      Register.r11,
+    )
 
-  private val argumentRegisters = listOf(
-    Register.rdi,
-    Register.rsi,
-    Register.rdx,
-    Register.rcx,
-    Register.r8,
-    Register.r9,
-  )
+    val argumentRegisters = listOf(
+      Register.rdi,
+      Register.rsi,
+      Register.rdx,
+      Register.rcx,
+      Register.r8,
+      Register.r9,
+    )
+
+    fun getSize(sym: TypedSymbol): Int {
+      if (sym.pointer) {
+        return 8
+      }
+
+      return when (sym.type) {
+        SymbolType.INT -> 4
+        SymbolType.CHAR -> 1
+        SymbolType.SHORT -> 2
+        SymbolType.LONG -> 8
+        SymbolType.FLOAT -> 4
+        SymbolType.DOUBLE -> 8
+      }
+    }
+
+    fun getSize(sym: Symbol.Variable): Int {
+      if (sym.pointer) {
+        return 8
+      }
+
+      return when (sym.type) {
+        SymbolType.INT -> 4
+        SymbolType.CHAR -> 1
+        SymbolType.SHORT -> 2
+        SymbolType.LONG -> 8
+        SymbolType.FLOAT -> 4
+        SymbolType.DOUBLE -> 8
+      }
+    }
+
+  }
 
   val tempBindings: Map<String, Register>
   val varBindings: Map<String, Variable>
   val stackSize: Int
 
-  fun getSize(sym: TypedSymbol): Int {
-    if (sym.pointer) {
-      return 8
-    }
-
-    return when (sym.type) {
-      SymbolType.INT -> 4
-      SymbolType.CHAR -> 1
-      SymbolType.SHORT -> 2
-      SymbolType.LONG -> 8
-      SymbolType.FLOAT -> 4
-      SymbolType.DOUBLE -> 8
-    }
-  }
-
-  fun getSize(sym: Symbol.Variable): Int {
-    if (sym.pointer) {
-      return 8
-    }
-
-    return when (sym.type) {
-      SymbolType.INT -> 4
-      SymbolType.CHAR -> 1
-      SymbolType.SHORT -> 2
-      SymbolType.LONG -> 8
-      SymbolType.FLOAT -> 4
-      SymbolType.DOUBLE -> 8
-    }
-  }
 
   init {
     // First allocate temporaries
@@ -171,7 +175,6 @@ class Allocator(fn: IRFunction) {
               live(node.src.name, i)
             }
 
-            is IRConst -> {}
             is IRCall -> {
               for (arg in node.src.arguments) {
                 if (arg is IRTemp) {
@@ -180,6 +183,7 @@ class Allocator(fn: IRFunction) {
               }
             }
 
+            is IRVar, is IRConst -> {}
             else -> {
               throw RuntimeException("Unrecognized node: $node")
             }

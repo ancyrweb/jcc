@@ -85,8 +85,16 @@ class IRGenerator(private val program: Program) {
         }
 
         is BinOpExpr -> {
-          val left = genExpr(node.left)
+          var left = genExpr(node.left)
           val right = genExpr(node.right)
+
+          if (left is IRVar && right is IRVar) {
+            val temp = IRTemp(temps.next())
+            val expr = IRMove(temp, left)
+            graph.add(expr)
+            left = temp
+          }
+
           val temp = IRTemp(temps.next())
 
           val op = when (node.op) {

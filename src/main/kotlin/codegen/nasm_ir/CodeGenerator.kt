@@ -11,8 +11,8 @@ import fr.ancyr.jcc.ir.nodes.stmt.IRReturn
 
 class CodeGenerator(private val program: IRProgram) {
   private val code = CodeBuffer()
-  private lateinit var allocator: Allocator
   private val labelAllocator = LabelAllocator()
+  private lateinit var allocator: Allocator
 
   fun generate(): String {
     code.clear()
@@ -39,8 +39,7 @@ class CodeGenerator(private val program: IRProgram) {
 
   fun genFn(fn: IRFunction) {
     allocator = Allocator(fn)
-
-    var exitLabel = labelAllocator.nextLabel()
+    val exitLabel = labelAllocator.nextLabel()
 
     appendNoTab("${fn.typedSymbol.identifier}:")
     append("; prologue")
@@ -54,7 +53,26 @@ class CodeGenerator(private val program: IRProgram) {
     }
 
     append("")
+    genFunParameters(fn)
+    append("")
+    genFnBody(fn, exitLabel)
 
+    append("; epilogue")
+    appendLabel(exitLabel)
+
+    if (allocator.stackSize > 0) {
+      // This too might not be needed
+      append("add rsp, ${allocator.stackSize}")
+    }
+
+    append("pop rbp")
+    append("ret")
+  }
+
+  private fun genFnBody(
+    fn: IRFunction,
+    exitLabel: String
+  ) {
     for (ir in fn.nodes) {
       when (ir) {
         is IRMove -> {
@@ -137,17 +155,29 @@ class CodeGenerator(private val program: IRProgram) {
       }
 
     }
+  }
 
-    append("; epilogue")
-    appendLabel(exitLabel)
+  private fun genFunParameters(fn: IRFunction) {
+    val parameterRegisters = Allocator.argumentRegisters.toMutableList()
 
-    if (allocator.stackSize > 0) {
-      // This too might not be needed
-      append("add rsp, ${allocator.stackSize}")
+    for (node in fn.parameters) {
+      if (parameterRegisters.isEmpty()) {
+        break
+      }
+
+      val register = parameterRegisters.removeFirst()
+      val size = Allocator.getSize(node)
+      val name = register.getName(size)
+      val location = allocator.varBindings[node.identifier]!!
+
+      if (size.toInt() <= 2) {
+        // Fetch only the last bits
+        append("mov ${Register.rax.getName(size)}, $name")
+        append("mov ${location.sizedLocation()}, ${Register.rax.getName(size)}")
+      } else {
+        append("mov ${location.sizedLocation()}, $name")
+      }
     }
-
-    append("pop rbp")
-    append("ret")
   }
 
   private fun getOperand(symbol: IRExpr, rawLocation: Boolean = false): String {
