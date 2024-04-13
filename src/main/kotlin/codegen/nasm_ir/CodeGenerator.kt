@@ -108,6 +108,50 @@ class CodeGenerator(private val program: IRProgram) {
                   append("cqo")
                   append("idiv $right")
                 }
+
+                IRBinop.BinopOperator.LESS -> {
+                  append("cmp $left, $right")
+                  append("setl al")
+                  append("and al, 1")
+                  append("movzx $left, al")
+                }
+
+                IRBinop.BinopOperator.LESS_EQUAL -> {
+                  append("cmp $left, $right")
+                  append("setle al")
+                  append("and al, 1")
+                  append("movzx $left, al")
+                }
+
+                IRBinop.BinopOperator.GREATER -> {
+                  append("cmp $left, $right")
+                  append("setg al")
+                  append("and al, 1")
+                  append("movzx $left, al")
+                }
+
+                IRBinop.BinopOperator.GREATER_EQUAL -> {
+                  append("cmp $left, $right")
+                  append("setge al")
+                  append("and al, 1")
+                  append("movzx $left, al")
+                }
+
+                IRBinop.BinopOperator.EQUAL -> {
+                  append("cmp $left, $right")
+                  append("sete al")
+                  append("and al, 1")
+                  append("movzx $left, al")
+                }
+
+                IRBinop.BinopOperator.NOT_EQUAL -> {
+                  append("cmp $left, $right")
+                  append("setne al")
+                  append("and al, 1")
+                  append("movzx $left, al")
+                }
+
+                else -> {}
               }
 
               left

@@ -14,11 +14,19 @@ class IRBinop(val op: BinopOperator, val left: IRExpr, val right: IRExpr) :
       BinopOperator.MINUS -> return "-($left, $right)"
       BinopOperator.MUL -> return "*($left, $right)"
       BinopOperator.DIV -> return "/($left, $right)"
+      BinopOperator.EQUAL -> return "==($left, $right)"
+      BinopOperator.NOT_EQUAL -> return "!=($left, $right)"
+      BinopOperator.LESS -> return "<($left, $right)"
+      BinopOperator.LESS_EQUAL -> return "<=($left, $right)"
+      BinopOperator.GREATER -> return ">($left, $right)"
+      BinopOperator.GREATER_EQUAL -> return ">=($left, $right)"
+      else -> throw IllegalArgumentException("Invalid operator: $op")
     }
 
   }
 
   enum class BinopOperator {
-    PLUS, MINUS, MUL, DIV
+    PLUS, MINUS, MUL, DIV,
+    EQUAL, NOT_EQUAL, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL
   }
 }

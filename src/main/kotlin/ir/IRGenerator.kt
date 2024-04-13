@@ -90,8 +90,7 @@ class IRGenerator(private val program: Program) {
 
           if (left is IRVar && right is IRVar) {
             val temp = IRTemp(temps.next())
-            val expr = IRMove(temp, left)
-            graph.add(expr)
+            graph.add(IRMove(temp, left))
             left = temp
           }
 
@@ -105,12 +104,45 @@ class IRGenerator(private val program: Program) {
             else -> throw IllegalArgumentException("Invalid operator: ${node.op}")
           }
 
-          val expr = IRMove(
-            temp,
-            IRBinop(op, left, right)
+
+          graph.add(
+            IRMove(
+              temp,
+              IRBinop(op, left, right)
+            )
           )
 
-          graph.add(expr)
+          return temp
+        }
+
+        is ComparisonExpr -> {
+          var left = genExpr(node.left)
+          val right = genExpr(node.right)
+
+          if (left is IRVar && right is IRVar) {
+            val temp = IRTemp(temps.next())
+            graph.add(IRMove(temp, left))
+            left = temp
+          }
+
+          val temp = IRTemp(temps.next())
+
+          val op = when (node.op) {
+            TokenType.OP_EQUAL_EQUAL -> IRBinop.BinopOperator.EQUAL
+            TokenType.OP_NOT_EQUAL -> IRBinop.BinopOperator.NOT_EQUAL
+            TokenType.OP_LESS -> IRBinop.BinopOperator.LESS
+            TokenType.OP_LESS_EQUAL -> IRBinop.BinopOperator.LESS_EQUAL
+            TokenType.OP_GREATER -> IRBinop.BinopOperator.GREATER
+            TokenType.OP_GREATER_EQUAL -> IRBinop.BinopOperator.GREATER_EQUAL
+            else -> throw IllegalArgumentException("Invalid operator: ${node.op}")
+          }
+
+          graph.add(
+            IRMove(
+              temp,
+              IRBinop(op, left, right)
+            )
+          )
 
           return temp
         }
