@@ -56,7 +56,6 @@ class CodeGenerator(private val program: IRProgram) {
 
     append("")
     genFunParameters(fn)
-    append("")
     genFnBody(fn, exitLabel)
 
     append("; epilogue")
@@ -76,8 +75,10 @@ class CodeGenerator(private val program: IRProgram) {
     exitLabel: String
   ) {
     for (ir in fn.nodes) {
-      append("")
-      append("; ${ir}")
+      if (ir !is IRNoop) {
+        append("")
+        append("; ${ir}")
+      }
 
       when (ir) {
         is IRMove -> {
@@ -178,20 +179,33 @@ class CodeGenerator(private val program: IRProgram) {
                 else -> throw RuntimeException("Unsupported binop ${ir.src.op}")
               }
             }
+
+            is IRAddress -> {
+              val reg = (dest as Register).getName(8)
+              val src = getOperand(ir.src.node) as Variable
+
+              append("lea $reg, ${src.location()}")
+            }
+
+            is IRDereference -> {
+              val reg = (dest as Register).getName(8)
+              val src = getOperand(ir.src.node) as Variable
+
+              append("mov $reg, ${src.sizedLocation()}")
+              append("mov $reg, [${reg}]")
+            }
           }
         }
 
         is IRReturn -> {
           if (ir.sym != null) {
             mov(Register.rax, getOperand(ir.sym))
-            append("jmp $exitLabel")
           }
+
+          append("jmp $exitLabel")
         }
 
-        is IRNoop -> {
-          append("")
-        }
-
+        is IRNoop -> {}
         else -> {
           append("; unhandled: $ir")
         }
@@ -242,8 +256,8 @@ class CodeGenerator(private val program: IRProgram) {
   }
 
   private fun mov(dest: Any, src: Any) {
-    var l: String = ""
-    var r: String = ""
+    var l = ""
+    var r = ""
 
     if (dest is Register) {
       if (src is Variable) {

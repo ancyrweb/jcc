@@ -83,31 +83,23 @@ class Allocator(fn: IRFunction) {
     // Every actual parameter will be moved to the stack after the function prologue
     for (parameter in fn.parameters) {
       val size = getSize(parameter)
-      if (registerIndex == argumentRegisters.size) {
-        varBindings[parameter.identifier] =
-          Variable(argumentStartOffset, size)
-
-        // Subtle note : the elements pushed onto the stacks
-        // for function invocation are always the 64-bit values
-        // of the register, so each parameter always take up 8 bytes
-        // however if we insert a 32-bit value or a 16-bit value we may
-        // have garbage data into the first 4 bytes or 6 bytes
-        // TODO : handle the code to manipulate 2-byte and 1-byte data
-        argumentStartOffset += 8
-      } else {
+      if (registerIndex < argumentRegisters.size) {
+        // the parameter is located on the register
         tempStackSize += size
         varBindings[parameter.identifier] =
           Variable(-tempStackSize, size)
         registerIndex--
+      } else {
+        // the parameter is located on the stack
+        varBindings[parameter.identifier] =
+          Variable(argumentStartOffset, size)
+
+        argumentStartOffset += 8
       }
     }
 
-    // Alignment
-    // Not the most efficient, but OK for now
-    if (tempStackSize % 16 != 0) {
-      val padding = 16 - (tempStackSize % 16)
-      tempStackSize += padding
-    }
+    // align the stack size to 16 bytes
+    tempStackSize += 16 - (tempStackSize % 16)
 
     for (node in fn.scope.symbolTable) {
       val variable = node.value as Symbol.Variable;
@@ -116,6 +108,10 @@ class Allocator(fn: IRFunction) {
       tempStackSize += size
       varBindings[variable.name] = Variable(-tempStackSize, size)
     }
+
+    // align the stack size to 16 bytes again
+    tempStackSize += 16 - (tempStackSize % 16)
+
 
     this.varBindings = varBindings
     this.stackSize = tempStackSize
@@ -159,18 +155,6 @@ class Allocator(fn: IRFunction) {
               }
             }
 
-            is IRDereference -> {
-              if (node.src.node is IRTemp) {
-                live(node.src.node.name, i)
-              }
-            }
-
-            is IRAddress -> {
-              if (node.src.node is IRTemp) {
-                live(node.src.node.name, i)
-              }
-            }
-
             is IRTemp -> {
               live(node.src.name, i)
             }
@@ -183,7 +167,7 @@ class Allocator(fn: IRFunction) {
               }
             }
 
-            is IRVar, is IRConst -> {}
+            is IRVar, is IRConst, is IRAddress, is IRDereference -> {}
             else -> {
               throw RuntimeException("Unrecognized node: $node")
             }
