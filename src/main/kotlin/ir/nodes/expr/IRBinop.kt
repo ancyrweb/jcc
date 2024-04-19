@@ -1,12 +1,8 @@
 package fr.ancyr.jcc.ir.nodes.expr
 
-class IRBinop(val op: BinopOperator, val left: IRExpr, val right: IRExpr) :
+class IRBinop(val op: BinopOperator, val left: IRSymbol, val right: IRSymbol) :
   IRExpr() {
-  init {
-    if (left is IRBinop || right is IRBinop) {
-      throw IllegalArgumentException("IRBinop cannot have a child of type IRBinop")
-    }
-  }
+
 
   override fun toString(): String {
     when (op) {

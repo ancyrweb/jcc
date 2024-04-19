@@ -18,7 +18,7 @@ class Compiler(val input: InputStream, val output: OutputStream) {
 
     val irGen = IRGenerator(ast)
     val ir = irGen.generate()
-
+    
     val codeGen = CodeGenerator(ir)
     val code = codeGen.generate()
 

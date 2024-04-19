@@ -5,6 +5,7 @@ import fr.ancyr.jcc.codegen.shared.LabelAllocator
 import fr.ancyr.jcc.ir.IRFunction
 import fr.ancyr.jcc.ir.IRProgram
 import fr.ancyr.jcc.ir.nodes.expr.*
+import fr.ancyr.jcc.ir.nodes.expr.IRBinop.BinopOperator
 import fr.ancyr.jcc.ir.nodes.stmt.IRMove
 import fr.ancyr.jcc.ir.nodes.stmt.IRNoop
 import fr.ancyr.jcc.ir.nodes.stmt.IRReturn
@@ -37,8 +38,9 @@ class CodeGenerator(private val program: IRProgram) {
     }
   }
 
-  fun genFn(fn: IRFunction) {
+  private fun genFn(fn: IRFunction) {
     allocator = Allocator(fn)
+
     val exitLabel = labelAllocator.nextLabel()
 
     appendNoTab("${fn.typedSymbol.identifier}:")
@@ -74,123 +76,120 @@ class CodeGenerator(private val program: IRProgram) {
     exitLabel: String
   ) {
     for (ir in fn.nodes) {
+      append("")
+      append("; ${ir}")
+
       when (ir) {
         is IRMove -> {
           val dest = getOperand(ir.dest)
-          val src = when (ir.src) {
-            is IRConst -> {
-              ir.src.value.toString()
+
+          when (ir.src) {
+            is IRVar -> {
+              mov(dest, allocator.varBindings[ir.src.name]!!)
             }
 
-            is IRTemp, is IRVar -> {
-              getOperand(ir.src)
+            is IRTemp -> {
+              mov(dest, allocator.tempBindings[ir.src.name]!!)
+            }
+
+            is IRConst -> {
+              val src = Immediate(ir.src.value)
+              mov(dest, src)
             }
 
             is IRBinop -> {
               val left = getOperand(ir.src.left)
               val right = getOperand(ir.src.right)
 
-              when (ir.src.op) {
-                IRBinop.BinopOperator.PLUS -> {
-                  append("add $left, $right")
+              mov(dest, left)
+
+              var opSize = 8
+              val subSrcStr = when (right) {
+                is Variable -> {
+                  opSize = right.size()
+                  right.sizedLocation()
                 }
 
-                IRBinop.BinopOperator.MINUS -> {
-                  append("sub $left, $right")
+                is Register -> {
+                  right.getName(8)
                 }
 
-                IRBinop.BinopOperator.MUL -> {
-                  append("imul $left, $right")
-                }
-
-                IRBinop.BinopOperator.DIV -> {
-                  append("mov rax, $left")
-                  append("cqo")
-                  append("idiv $right")
-                }
-
-                IRBinop.BinopOperator.LESS -> {
-                  append("cmp $left, $right")
-                  append("setl al")
-                  append("and al, 1")
-                  append("movzx $left, al")
-                }
-
-                IRBinop.BinopOperator.LESS_EQUAL -> {
-                  append("cmp $left, $right")
-                  append("setle al")
-                  append("and al, 1")
-                  append("movzx $left, al")
-                }
-
-                IRBinop.BinopOperator.GREATER -> {
-                  append("cmp $left, $right")
-                  append("setg al")
-                  append("and al, 1")
-                  append("movzx $left, al")
-                }
-
-                IRBinop.BinopOperator.GREATER_EQUAL -> {
-                  append("cmp $left, $right")
-                  append("setge al")
-                  append("and al, 1")
-                  append("movzx $left, al")
-                }
-
-                IRBinop.BinopOperator.EQUAL -> {
-                  append("cmp $left, $right")
-                  append("sete al")
-                  append("and al, 1")
-                  append("movzx $left, al")
-                }
-
-                IRBinop.BinopOperator.NOT_EQUAL -> {
-                  append("cmp $left, $right")
-                  append("setne al")
-                  append("and al, 1")
-                  append("movzx $left, al")
-                }
-
-                else -> {}
+                else -> throw RuntimeException("Unknown RightStr")
               }
 
-              left
-            }
+              val subDestStr = (dest as Register).getName(opSize)
 
-            is IRDereference -> {
-              getOperand(ir.src.node, true)
-            }
+              when (ir.src.op) {
+                BinopOperator.PLUS -> {
+                  append("add $subDestStr, $subSrcStr")
+                }
 
-            is IRAddress -> {
-              getOperand(ir.src.node, true)
-            }
+                BinopOperator.MINUS -> {
+                  append("sub $subDestStr, $subSrcStr")
+                }
 
-            else -> {
-              "unhandled"
-            }
-          }
+                BinopOperator.MUL -> {
+                  append("imul $subDestStr, $subSrcStr")
+                }
 
-          if (ir.src is IRAddress) {
-            append("lea $dest, $src")
-          } else if (ir.src is IRDereference) {
-            append("mov $dest, $src")
-            append("mov $dest, [${dest}]")
-          } else {
-            append("mov $dest, $src")
+                BinopOperator.DIV -> {
+                  append("mov rax, $subDestStr")
+                  append("cqo")
+                  append("idiv $subSrcStr")
+                  append("mov $subDestStr, rax")
+                }
+
+                BinopOperator.LESS -> {
+                  append("cmp $subDestStr, $subSrcStr")
+                  append("setl al")
+                  append("movzx $subDestStr, al")
+                }
+
+                BinopOperator.LESS_EQUAL -> {
+                  append("cmp $subDestStr, $subSrcStr")
+                  append("setle al")
+                  append("movzx $subDestStr, al")
+                }
+
+                BinopOperator.GREATER -> {
+                  append("cmp $subDestStr, $subSrcStr")
+                  append("setg al")
+                  append("movzx $subDestStr, al")
+                }
+
+                BinopOperator.GREATER_EQUAL -> {
+                  append("cmp $subDestStr, $subSrcStr")
+                  append("setge al")
+                  append("movzx $subDestStr, al")
+                }
+
+                BinopOperator.EQUAL -> {
+                  append("cmp $subDestStr, $subSrcStr")
+                  append("sete al")
+                  append("movzx $subDestStr, al")
+                }
+
+                BinopOperator.NOT_EQUAL -> {
+                  append("cmp $subDestStr, $subSrcStr")
+                  append("setne al")
+                  append("movzx $subDestStr, al")
+                }
+
+                else -> throw RuntimeException("Unsupported binop ${ir.src.op}")
+              }
+            }
           }
         }
 
         is IRReturn -> {
           if (ir.sym != null) {
-            val src = getOperand(ir.sym)
-            append("mov rax, $src")
+            mov(Register.rax, getOperand(ir.sym))
             append("jmp $exitLabel")
           }
         }
 
         is IRNoop -> {
           append("")
-
         }
 
         else -> {
@@ -224,22 +223,54 @@ class CodeGenerator(private val program: IRProgram) {
     }
   }
 
-  private fun getOperand(symbol: IRExpr, rawLocation: Boolean = false): String {
+  private fun getOperand(
+    symbol: IRSymbol
+  ): Any {
     return when (symbol) {
       is IRVar -> {
-        val variable = allocator.varBindings[symbol.name]!!
-        if (rawLocation) variable.location() else variable.sizedLocation()
+        allocator.varBindings[symbol.name]!!
       }
 
       is IRTemp -> {
-        val register = allocator.tempBindings[symbol.name]!!
-        register.getName(8)
+        allocator.tempBindings[symbol.name]!!
       }
 
       else -> {
         throw Exception("Invalid destination")
       }
     }
+  }
+
+  private fun mov(dest: Any, src: Any) {
+    var l: String = ""
+    var r: String = ""
+
+    if (dest is Register) {
+      if (src is Variable) {
+        if (src.size() != 8) {
+          // Zero out
+          val reg = dest.getName(8)
+          append("xor ${reg}, ${reg}")
+        }
+
+        l = dest.getName(src.size())
+        r = src.sizedLocation()
+      } else if (src is Immediate) {
+        l = dest.getName(8)
+        r = src.value.toString()
+      } else if (src is Register) {
+        l = dest.getName(8)
+        r = src.getName(8)
+      }
+    } else if (dest is Variable) {
+      l = dest.sizedLocation()
+
+      if (src is Register) {
+        r = src.getName(dest.size())
+      }
+    }
+
+    append("mov $l, $r")
   }
 
   private fun appendNoTab(str: String) {

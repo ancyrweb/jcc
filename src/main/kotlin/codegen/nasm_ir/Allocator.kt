@@ -244,7 +244,7 @@ class Allocator(fn: IRFunction) {
       regIndex++
 
       if (regIndex >= registers.size) {
-        throw RuntimeException("Not enough registers, spilling not supported")
+        throw RuntimeException("Not enough registers, spilling not supported yet")
       }
     }
 
